@@ -1,8 +1,10 @@
 const searchInput = document.getElementById('searchInput');
 const searchResults = document.getElementById('searchResults');
 
+window.dictionaryData = [];
+
 // Fetch dictionary data from the JSONL file
-fetch('../data/diccionario-maria-moliner.jsonl')
+fetch('data/diccionario-maria-moliner.jsonl')
     .then(response => response.text())
     .then(text => {
         // Parse JSONL format (each line is a separate JSON object)
