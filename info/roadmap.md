@@ -142,12 +142,16 @@ Extraer del texto plano todo lo que se pueda con regex. Ya implementado:
 #### Task 11 — Regenerar datos y validar contra el corpus completo ✅
 Validación ya cubierta dentro de Task 8-10 (0 crashes en cada etapa, conteos cruzados verificados de forma independiente en cada paso). Sin hallazgos nuevos que registrar.
 
-#### Task 12 — Conectar la app (`index.html`/`main.js`) a los datos estructurados/enriquecidos (pendiente)
-Actualmente la app solo lee `definition` plano del jsonl v1; no usa nada de Fase 1. Mostrar acepciones/subacepciones/catálogo/expresiones + campos nuevos.
+#### Task 12 — Conectar la app a los datos estructurados/enriquecidos ✅ (hecho en `parser-acepciones`)
+- **Cambio de arquitectura necesario:** el v2 jsonl con Fase 2 pesa 73MB — inviable para `fetch()` completo en el navegador (el v1 ya era pesado a 13MB, pero 73MB cruza a "roto", no solo "no óptimo"). Se decidió con el usuario: servidor local mínimo en vez de sitio estático.
+- `scripts/lib/mm-sqlite-reader.mjs` — `searchEntries()` (prefijo de lema, para autocompletar) y `getEntryDetail()` (reconstruye la entrada completa: acepciones, subacepciones, catálogo, expresiones, enriquecimiento) consultando SQLite bajo demanda. TDD'd vía round-trip escritor→lector.
+- `server.mjs` — `node:http` + `node:sqlite` puro, sin dependencias nuevas. Sirve los archivos estáticos y `GET /api/search?q=`, `GET /api/entry/:id`.
+- `main.js`/`style.css` reescritos: búsqueda con debounce contra `/api/search`, panel de resultado con acepciones numeradas, subacepciones anidadas, ejemplos, sinónimos, referencias cruzadas, antónimo, catálogo, expresiones con sus propias acepciones, y panel de enriquecimiento Lucene (etimología, categoría, área/nivel de uso, nombre científico, conjugación, notas de uso, sinónimos).
 
-#### Task 13 — Probar la app en navegador (pendiente)
+#### Task 13 — Probar la app en navegador ✅
+Probado con Chrome DevTools MCP contra el servidor real: búsqueda (debounce + botón Buscar), entrada rica con subacepción+sinónimos (`ademán`), entrada con catálogo (`ánima`), entrada con expresiones (`abogado, -a` — confirma visualmente el fix de `A. DEL EstaDo` de Task 3), entrada plana de Lucene (`aaronita`), búsqueda sin resultados. 0 errores de consola (solo el 404 automático del favicon del navegador). Confirmado visualmente el límite ya documentado de `sinonimosLucene` (fragmenta frases multi-palabra al no tener delimitador — ver `ánima`).
 
-#### Task 14 — Mergear `parser-acepciones` a `main` (pendiente, solo tras Task 12-13)
+#### Task 14 — Mergear `parser-acepciones` a `main` (pendiente)
 
 ### Fase 3 — Enriquecimiento externo (póst-MVP)
 - `semanticField` vía WordNet/ConceptNet/OMW
