@@ -70,7 +70,7 @@ export function splitIntoBlocks(lines, startLine) {
       break;
     }
 
-    if (line.trim() !== '' && (PAGE_NUMBER_LINE_REGEX.test(line) || SCAN_NOISE_LINE_REGEX.test(line))) {
+    if (currentLines.length === 0 && line.trim() !== '' && (PAGE_NUMBER_LINE_REGEX.test(line) || SCAN_NOISE_LINE_REGEX.test(line))) {
       offset += 1;
       continue;
     }

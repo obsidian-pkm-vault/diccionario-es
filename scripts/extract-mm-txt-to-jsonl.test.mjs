@@ -107,6 +107,21 @@ test('splitIntoBlocks does not bridge a page break onto an entry whose type mark
   ]);
 });
 
+test('splitIntoBlocks does not drop a scan-noise-shaped line that is genuine mid-entry content', () => {
+  const lines = [
+    'ejemplo m. Primera parte de la definicion.',
+    'V.',
+    'Segunda parte que continua tras esa linea corta.',
+  ];
+  const blocks = splitIntoBlocks(lines, 1);
+  assert.equal(blocks.length, 1);
+  assert.deepEqual(blocks[0].lines, [
+    'ejemplo m. Primera parte de la definicion.',
+    'V.',
+    'Segunda parte que continua tras esa linea corta.',
+  ]);
+});
+
 test('splitIntoBlocks skips a stray scan-noise line and still separates the real entry that follows', () => {
   const lines = [
     'previo m. Palabra anterior en el texto.',
