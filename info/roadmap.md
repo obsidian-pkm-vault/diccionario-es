@@ -103,7 +103,7 @@ Extraer del texto plano todo lo que se pueda con regex. Ya implementado:
 - [x] Extractores hoja: ejemplos, sinónimos, referencias cruzadas, antónimos (heurística)
 - [x] Splitters estructurales: acepciones numeradas, subacepciones (`©`), catálogo (`O `), expresiones (`/`)
 - [x] `buildEntry()` — pipeline que compone extractores + splitters
-- [ ] Escritor SQLite normalizado (`node:sqlite`)
+- [x] Escritor SQLite normalizado (`node:sqlite`)
 - [ ] Orquestador CLI (`scripts/parse-mm-definitions.mjs`)
 - [ ] Validación manual (~20 lemas)
 
@@ -156,9 +156,12 @@ Estrategia propuesta: buscar librería Node.js que lea Lucene índices, o implem
 - Estructura anidada: `{ senses: [{ number, definition, examples, synonyms, crossReferences, antonym, subsenses, catalog }], expressions: [{ phrase, senses }] }`
 - Tests de integración con fragmentos reales (6 tests) + escaneo del corpus completo: 0 crashes, 54,340 acepciones, 4,617 expresiones generadas
 
-### Task 5 — Escritor SQLite (pendiente)
+### Task 5 — Escritor SQLite ✅ (hecho en `parser-acepciones`)
 - Tablas: `entries`, `senses`, `subsenses`, `examples`, `catalog_items`, `synonyms`, `antonyms`, `cross_references`, `expressions`
-- Usar `node:sqlite` (built-in)
+- `node:sqlite` (built-in, `DatabaseSync`), sentencias preparadas reutilizadas por escritor (`createWriter(db)`)
+- `entries.id` es un **id sustituto** (`INTEGER PRIMARY KEY AUTOINCREMENT`), no el `id` del jsonl: al insertar el corpus completo aparecieron 474 colisiones (37,792 entradas, solo 37,318 `id` únicos) — ruido OCR hace que dos lemas distintos normalicen al mismo slug (`a'` y `a”` → `a`). El `id` original se guarda como columna `source_id` (indexada, no única) para trazabilidad.
+- Verificado contra el corpus completo: 0 crashes, 37,792 entradas, 59,331 acepciones (incluye las de expresiones), 4,039 subacepciones, 13,167 ejemplos, 9,920 sinónimos, 10,473 ítems de catálogo, 4,617 expresiones, ~760ms
+- De paso se corrigió un bug de Task 4: `buildEntry()` descartaba el catálogo embebido dentro de una subacepción (`© ... O ...`) — afectaba a ~19% de las subacepciones (740/3,970)
 
 ### Task 6 — Orquestador CLI (pendiente)
 - `scripts/parse-mm-definitions.mjs`
