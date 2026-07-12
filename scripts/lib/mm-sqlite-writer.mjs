@@ -9,7 +9,19 @@ export function createSchema(db) {
       header TEXT,
       source TEXT,
       start_line INTEGER,
-      end_line INTEGER
+      end_line INTEGER,
+      etimologia TEXT,
+      area_uso TEXT,
+      nivel_uso TEXT,
+      cat_gram TEXT,
+      nombre_cientifico TEXT,
+      conjugacion TEXT,
+      notas_uso TEXT,
+      voz TEXT,
+      anagrama TEXT,
+      antiguo INTEGER,
+      desuso INTEGER,
+      sinonimos_lucene TEXT
     );
 
     CREATE INDEX IF NOT EXISTS idx_entries_source_id ON entries(source_id);
@@ -75,7 +87,11 @@ export function createSchema(db) {
 export function createWriter(db) {
   const statements = {
     entry: db.prepare(
-      'INSERT INTO entries (source_id, lemma, types, initial_meta, header, source, start_line, end_line) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      `INSERT INTO entries (
+        source_id, lemma, types, initial_meta, header, source, start_line, end_line,
+        etimologia, area_uso, nivel_uso, cat_gram, nombre_cientifico, conjugacion,
+        notas_uso, voz, anagrama, antiguo, desuso, sinonimos_lucene
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ),
     expression: db.prepare('INSERT INTO expressions (entry_id, phrase) VALUES (?, ?)'),
     sense: db.prepare('INSERT INTO senses (entry_id, expression_id, number, definition) VALUES (?, ?, ?, ?)'),
@@ -109,7 +125,7 @@ export function createWriter(db) {
     for (const subsense of sense.subsenses) insertSubsense(senseId, subsense);
   }
 
-  function insertEntry(record, built) {
+  function insertEntry(record, built, enrichment = null) {
     const entryInfo = statements.entry.run(
       record.id,
       record.lemma,
@@ -119,6 +135,18 @@ export function createWriter(db) {
       record.source ?? '',
       record.startLine ?? null,
       record.endLine ?? null,
+      enrichment?.etimologia ? JSON.stringify(enrichment.etimologia) : null,
+      enrichment?.areaUso ? JSON.stringify(enrichment.areaUso) : null,
+      enrichment?.nivelUso ? JSON.stringify(enrichment.nivelUso) : null,
+      enrichment?.catGram ? JSON.stringify(enrichment.catGram) : null,
+      enrichment?.nombreCientifico ?? null,
+      enrichment?.conjugacion ?? null,
+      enrichment?.notasUso ?? null,
+      enrichment?.voz ?? null,
+      enrichment?.anagrama ?? null,
+      enrichment ? Number(enrichment.antiguo) : null,
+      enrichment ? Number(enrichment.desuso) : null,
+      enrichment?.sinonimos ? JSON.stringify(enrichment.sinonimos) : null,
     );
     const entryId = Number(entryInfo.lastInsertRowid);
 

@@ -56,8 +56,54 @@ test('insertEntry writes the entries row, keyed by a surrogate id (source_id is 
       source: 'mm',
       start_line: 10,
       end_line: 12,
+      etimologia: null,
+      area_uso: null,
+      nivel_uso: null,
+      cat_gram: null,
+      nombre_cientifico: null,
+      conjugacion: null,
+      notas_uso: null,
+      voz: null,
+      anagrama: null,
+      antiguo: null,
+      desuso: null,
+      sinonimos_lucene: null,
     },
   ]);
+  db.close();
+});
+
+test('insertEntry writes Lucene enrichment columns onto the entries row when given an enrichment record', () => {
+  const db = openDb();
+  const { insertEntry } = createWriter(db);
+  insertEntry(
+    { id: 'ademan', lemma: 'ademán', types: ['m'], initialMeta: '', header: 'ademán m.', source: 'mm', startLine: 1, endLine: 1 },
+    { senses: [], expressions: [] },
+    {
+      etimologia: ['árabe andalusí', 'árabe clásico'],
+      areaUso: [],
+      nivelUso: [],
+      catGram: ['masculino'],
+      nombreCientifico: null,
+      conjugacion: null,
+      notasUso: null,
+      voz: 'ademán del árabe andalusí',
+      anagrama: 'a d e m a n',
+      antiguo: false,
+      desuso: false,
+      sinonimos: ['Actitud', 'Maneras', 'modales'],
+    },
+  );
+  const row = one(db, 'SELECT etimologia, area_uso, cat_gram, voz, antiguo, desuso, sinonimos_lucene FROM entries');
+  assert.deepEqual(row, {
+    etimologia: '["árabe andalusí","árabe clásico"]',
+    area_uso: '[]',
+    cat_gram: '["masculino"]',
+    voz: 'ademán del árabe andalusí',
+    antiguo: 0,
+    desuso: 0,
+    sinonimos_lucene: '["Actitud","Maneras","modales"]',
+  });
   db.close();
 });
 
