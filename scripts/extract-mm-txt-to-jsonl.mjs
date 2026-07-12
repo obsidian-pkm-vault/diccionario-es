@@ -3,6 +3,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { parseArgs as parseCliArgs, resolvePath, parseInteger } from './lib/cli-args.mjs';
 
 const DEFAULT_INPUT = path.resolve('data/diccionario-maria-moliner.txt');
 const DEFAULT_OUTPUT = path.resolve('data/diccionario-maria-moliner.jsonl');
@@ -17,42 +18,16 @@ const SCAN_NOISE_LINE_REGEX = /^[^\p{Ll}\d]{1,12}$/u;
 const DISQUALIFYING_PREFIX_REGEX = /[:"'“”‘’ʻ=©]/u;
 
 function parseArgs(argv) {
-  const options = {
-    input: DEFAULT_INPUT,
-    output: DEFAULT_OUTPUT,
-    startLine: DEFAULT_START_LINE,
-    limit: undefined,
-  };
-
-  for (let index = 0; index < argv.length; index += 1) {
-    const arg = argv[index];
-
-    if (arg === '--input' && argv[index + 1]) {
-      options.input = path.resolve(argv[index + 1]);
-      index += 1;
-      continue;
-    }
-
-    if (arg === '--output' && argv[index + 1]) {
-      options.output = path.resolve(argv[index + 1]);
-      index += 1;
-      continue;
-    }
-
-    if (arg === '--start-line' && argv[index + 1]) {
-      options.startLine = Number.parseInt(argv[index + 1], 10);
-      index += 1;
-      continue;
-    }
-
-    if (arg === '--limit' && argv[index + 1]) {
-      options.limit = Number.parseInt(argv[index + 1], 10);
-      index += 1;
-      continue;
-    }
-  }
-
-  return options;
+  return parseCliArgs(
+    argv,
+    { input: DEFAULT_INPUT, output: DEFAULT_OUTPUT, startLine: DEFAULT_START_LINE, limit: undefined },
+    {
+      '--input': { key: 'input', parse: resolvePath },
+      '--output': { key: 'output', parse: resolvePath },
+      '--start-line': { key: 'startLine', parse: parseInteger },
+      '--limit': { key: 'limit', parse: parseInteger },
+    },
+  );
 }
 
 export function splitIntoBlocks(lines, startLine) {

@@ -7,6 +7,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { buildEntry } from './lib/mm-build-entry.mjs';
 import { createSchema, createWriter } from './lib/mm-sqlite-writer.mjs';
 import { matchLuceneToTxtEntries } from './lib/mm-lucene-merge.mjs';
+import { parseArgs as parseCliArgs, resolvePath, parseInteger } from './lib/cli-args.mjs';
 
 const DEFAULT_INPUT = path.resolve('data/diccionario-maria-moliner.jsonl');
 const DEFAULT_LUCENE_INPUT = path.resolve('data/diccionario-maria-moliner-lucene.jsonl');
@@ -14,49 +15,23 @@ const DEFAULT_OUTPUT_JSONL = path.resolve('data/diccionario-maria-moliner-v2.jso
 const DEFAULT_OUTPUT_SQLITE = path.resolve('data/diccionario-maria-moliner.sqlite');
 
 function parseArgs(argv) {
-  const options = {
-    input: DEFAULT_INPUT,
-    luceneInput: DEFAULT_LUCENE_INPUT,
-    outputJsonl: DEFAULT_OUTPUT_JSONL,
-    outputSqlite: DEFAULT_OUTPUT_SQLITE,
-    limit: undefined,
-  };
-
-  for (let index = 0; index < argv.length; index += 1) {
-    const arg = argv[index];
-
-    if (arg === '--input' && argv[index + 1]) {
-      options.input = path.resolve(argv[index + 1]);
-      index += 1;
-      continue;
-    }
-
-    if (arg === '--lucene-input' && argv[index + 1]) {
-      options.luceneInput = path.resolve(argv[index + 1]);
-      index += 1;
-      continue;
-    }
-
-    if (arg === '--output-jsonl' && argv[index + 1]) {
-      options.outputJsonl = path.resolve(argv[index + 1]);
-      index += 1;
-      continue;
-    }
-
-    if (arg === '--output-sqlite' && argv[index + 1]) {
-      options.outputSqlite = path.resolve(argv[index + 1]);
-      index += 1;
-      continue;
-    }
-
-    if (arg === '--limit' && argv[index + 1]) {
-      options.limit = Number.parseInt(argv[index + 1], 10);
-      index += 1;
-      continue;
-    }
-  }
-
-  return options;
+  return parseCliArgs(
+    argv,
+    {
+      input: DEFAULT_INPUT,
+      luceneInput: DEFAULT_LUCENE_INPUT,
+      outputJsonl: DEFAULT_OUTPUT_JSONL,
+      outputSqlite: DEFAULT_OUTPUT_SQLITE,
+      limit: undefined,
+    },
+    {
+      '--input': { key: 'input', parse: resolvePath },
+      '--lucene-input': { key: 'luceneInput', parse: resolvePath },
+      '--output-jsonl': { key: 'outputJsonl', parse: resolvePath },
+      '--output-sqlite': { key: 'outputSqlite', parse: resolvePath },
+      '--limit': { key: 'limit', parse: parseInteger },
+    },
+  );
 }
 
 export function toJsonlRecord(record, built, enrichment = null) {
@@ -114,6 +89,12 @@ function readRecords(inputPath, limit) {
   return limit ? records.slice(0, limit) : records;
 }
 
+function processEntry(insertEntry, record, enrichment) {
+  const built = buildEntry(record.definition);
+  insertEntry(record, built, enrichment);
+  return JSON.stringify(toJsonlRecord(record, built, enrichment));
+}
+
 function main() {
   const options = parseArgs(process.argv.slice(2));
   const records = readRecords(options.input, options.limit);
@@ -128,18 +109,11 @@ function main() {
 
   const jsonlLines = [];
   db.exec('BEGIN');
-  for (let i = 0; i < records.length; i += 1) {
-    const record = records[i];
-    const enrichment = enrichments[i];
-    const built = buildEntry(record.definition);
-    insertEntry(record, built, enrichment);
-    jsonlLines.push(JSON.stringify(toJsonlRecord(record, built, enrichment)));
-  }
+  records.forEach((record, i) => {
+    jsonlLines.push(processEntry(insertEntry, record, enrichments[i]));
+  });
   for (const luceneRecord of gapFill) {
-    const record = buildGapFillRecord(luceneRecord);
-    const built = buildEntry(record.definition);
-    insertEntry(record, built, luceneRecord);
-    jsonlLines.push(JSON.stringify(toJsonlRecord(record, built, luceneRecord)));
+    jsonlLines.push(processEntry(insertEntry, buildGapFillRecord(luceneRecord), luceneRecord));
   }
   db.exec('COMMIT');
   db.close();

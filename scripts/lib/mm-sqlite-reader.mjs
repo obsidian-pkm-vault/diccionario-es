@@ -3,9 +3,8 @@ function parseJsonArray(value) {
 }
 
 function getLeaves(db, table, column, senseId, subsenseId) {
-  const field = table === 'examples' || table === 'catalog_items' ? 'text' : 'word';
   return db
-    .prepare(`SELECT ${field} AS value FROM ${table} WHERE sense_id IS ? AND subsense_id IS ?`)
+    .prepare(`SELECT ${column} AS value FROM ${table} WHERE sense_id IS ? AND subsense_id IS ?`)
     .all(senseId, subsenseId)
     .map((row) => row.value);
 }

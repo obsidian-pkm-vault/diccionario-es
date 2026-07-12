@@ -49,19 +49,18 @@ function buildSense(number, text) {
   };
 }
 
+function buildSenses(text) {
+  return splitNumberedSenses(text).map(({ number, text: senseText }) => buildSense(number, senseText));
+}
+
 export function buildEntry(text) {
   const { text: mainText, expressions } = splitExpressions(text);
-  const senses = splitNumberedSenses(mainText).map(({ number, text: senseText }) =>
-    buildSense(number, senseText),
-  );
 
   return {
-    senses,
+    senses: buildSenses(mainText),
     expressions: expressions.map(({ phrase, text: expressionText }) => ({
       phrase,
-      senses: splitNumberedSenses(expressionText).map(({ number, text: senseText }) =>
-        buildSense(number, senseText),
-      ),
+      senses: buildSenses(expressionText),
     })),
   };
 }

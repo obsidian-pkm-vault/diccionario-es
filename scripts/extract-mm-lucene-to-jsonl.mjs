@@ -5,6 +5,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { parseCompoundFileDirectory, parseFieldNames, readStoredFields } from './lib/lucene-cfs-reader.mjs';
 import { makeId } from './extract-mm-txt-to-jsonl.mjs';
+import { parseArgs as parseCliArgs, resolvePath, parseInteger } from './lib/cli-args.mjs';
 
 const DEFAULT_INPUT = path.resolve('data/Diccionario_Maria_Moliner_3a_ed/Setup/index/todo/_7kh.cfs');
 const DEFAULT_OUTPUT = path.resolve('data/diccionario-maria-moliner-lucene.jsonl');
@@ -15,14 +16,15 @@ const BOOLEAN_FIELDS = ['antiguo', 'desuso'];
 const FREE_TEXT_FIELDS = ['nombreCientifico', 'conjugacion', 'notasUso', 'voz', 'anagrama'];
 
 function parseArgs(argv) {
-  const options = { input: DEFAULT_INPUT, output: DEFAULT_OUTPUT, limit: undefined };
-  for (let index = 0; index < argv.length; index += 1) {
-    const arg = argv[index];
-    if (arg === '--input' && argv[index + 1]) { options.input = path.resolve(argv[index + 1]); index += 1; continue; }
-    if (arg === '--output' && argv[index + 1]) { options.output = path.resolve(argv[index + 1]); index += 1; continue; }
-    if (arg === '--limit' && argv[index + 1]) { options.limit = Number.parseInt(argv[index + 1], 10); index += 1; continue; }
-  }
-  return options;
+  return parseCliArgs(
+    argv,
+    { input: DEFAULT_INPUT, output: DEFAULT_OUTPUT, limit: undefined },
+    {
+      '--input': { key: 'input', parse: resolvePath },
+      '--output': { key: 'output', parse: resolvePath },
+      '--limit': { key: 'limit', parse: parseInteger },
+    },
+  );
 }
 
 export function parseLemaField(rawLema) {
