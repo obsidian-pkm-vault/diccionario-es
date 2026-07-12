@@ -1,83 +1,148 @@
 const searchInput = document.getElementById('searchInput');
 const searchResults = document.getElementById('searchResults');
 
-window.dictionaryData = [];
+let debounceTimer = null;
 
-// Fetch dictionary data from the JSONL file
-fetch('data/diccionario-maria-moliner.jsonl')
-    .then(response => response.text())
-    .then(text => {
-        // Parse JSONL format (each line is a separate JSON object)
-        const lines = text.trim().split('\n');
-        const data = lines.map(line => {
-            const obj = JSON.parse(line);
-            return {
-                word: obj.lemma,
-                definition: obj.definition,
-                ...obj // Include all original fields
-            };
-        });
-        
-        // Store the dictionary data globally
-        window.dictionaryData = data;
+searchInput.addEventListener('input', () => {
+    clearTimeout(debounceTimer);
+    const query = searchInput.value.trim();
+    if (!query) {
+        searchResults.innerHTML = '';
+        return;
+    }
+    debounceTimer = setTimeout(() => runSearch(query), 150);
+});
 
-        // Event listener for the input field
-        searchInput.addEventListener('input', function() {
-            const searchWord = searchInput.value.toLowerCase();
-            const matchingWords = dictionaryData.filter(wordObj => wordObj.word.toLowerCase().startsWith(searchWord));
-
-            // Display the matching words
-            displayMatchingWords(matchingWords);
-        });
-    })
-    .catch(error => console.error('Error fetching dictionary data:', error));
+async function runSearch(query) {
+    const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+    const results = await response.json();
+    displayMatchingWords(results);
+}
 
 function searchDictionary() {
-    const searchWord = searchInput.value.toLowerCase();
-    const result = dictionaryData.find(wordObj => wordObj.word.toLowerCase() === searchWord);
-
-    if (result) {
-        displayWord(result);
-    } else {
-        searchResults.innerHTML = '<p>Word not found.</p>';
-    }
+    const query = searchInput.value.trim();
+    if (!query) return;
+    runSearch(query);
 }
 
-function displayWord(wordObj) {
-    const types = Array.isArray(wordObj.types) ? wordObj.types.join(', ') : wordObj.types || '';
-    const typesHtml = types ? `<span class="word-types">${types}</span>` : '';
-    const metaHtml = wordObj.initialMeta ? `<p class="word-meta"><strong>Meta:</strong> ${wordObj.initialMeta}</p>` : '';
-    const sourceHtml = wordObj.source ? `<p class="word-source"><small>Source: ${wordObj.source}</small></p>` : '';
-    
-    const wordPage = `
+function displayMatchingWords(results) {
+    if (results.length === 0) {
+        searchResults.innerHTML = '<p class="no-results">No se encontraron palabras.</p>';
+        return;
+    }
+
+    const listItems = results
+        .map((result) => `<li class="word-item" data-entry-id="${result.id}">${escapeHtml(result.header || result.lemma)}</li>`)
+        .join('');
+    searchResults.innerHTML = `<ul class="search-list">${listItems}</ul>`;
+
+    document.querySelectorAll('.word-item').forEach((item) => {
+        item.addEventListener('click', () => displayWord(Number(item.dataset.entryId)));
+    });
+}
+
+async function displayWord(entryId) {
+    const response = await fetch(`/api/entry/${entryId}`);
+    if (!response.ok) {
+        searchResults.innerHTML = '<p class="no-results">Palabra no encontrada.</p>';
+        return;
+    }
+    const entry = await response.json();
+    searchResults.innerHTML = renderEntry(entry);
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text ?? '';
+    return div.innerHTML;
+}
+
+function renderLeafExtras(leaf) {
+    let html = '';
+    if (leaf.examples?.length) {
+        html += `<ul class="examples">${leaf.examples.map((ex) => `<li>&ldquo;${escapeHtml(ex)}&rdquo;</li>`).join('')}</ul>`;
+    }
+    if (leaf.synonyms?.length) {
+        html += `<p class="tag-line"><strong>Sinónimos:</strong> ${leaf.synonyms.map(escapeHtml).join(', ')}</p>`;
+    }
+    if (leaf.crossReferences?.length) {
+        html += `<p class="tag-line"><strong>Véase también:</strong> ${leaf.crossReferences.map(escapeHtml).join(', ')}</p>`;
+    }
+    if (leaf.antonym) {
+        html += `<p class="tag-line"><strong>Antónimo:</strong> ${escapeHtml(leaf.antonym)}</p>`;
+    }
+    if (leaf.catalog?.length) {
+        html += `<ul class="catalog">${leaf.catalog.map((item) => `<li>${escapeHtml(item)}</li>`).join('')}</ul>`;
+    }
+    return html;
+}
+
+function renderSubsense(subsense) {
+    return `
+        <li class="subsense">
+            <p>${escapeHtml(subsense.definition)}</p>
+            ${renderLeafExtras(subsense)}
+        </li>
+    `;
+}
+
+function renderSense(sense) {
+    return `
+        <li class="sense">
+            <p><span class="sense-number">${sense.number}.</span> ${escapeHtml(sense.definition)}</p>
+            ${renderLeafExtras(sense)}
+            ${sense.subsenses?.length ? `<ul class="subsenses">${sense.subsenses.map(renderSubsense).join('')}</ul>` : ''}
+        </li>
+    `;
+}
+
+function renderExpressions(expressions) {
+    if (!expressions?.length) return '';
+    const items = expressions
+        .map(
+            (expression) => `
+                <div class="expression">
+                    <h3>${escapeHtml(expression.phrase)}</h3>
+                    <ol class="senses">${expression.senses.map(renderSense).join('')}</ol>
+                </div>
+            `,
+        )
+        .join('');
+    return `<div class="expressions"><h2>Expresiones</h2>${items}</div>`;
+}
+
+function renderEnrichment(enrichment) {
+    if (!enrichment) return '';
+    const rows = [
+        ['Etimología', enrichment.etimologia?.join(', ')],
+        ['Categoría', enrichment.catGram?.join(', ')],
+        ['Área de uso', enrichment.areaUso?.join(', ')],
+        ['Nivel de uso', enrichment.nivelUso?.join(', ')],
+        ['Nombre científico', enrichment.nombreCientifico],
+        ['Conjugación', enrichment.conjugacion],
+        ['Sinónimos (Lucene)', enrichment.sinonimos?.length ? enrichment.sinonimos.join(', ') : null],
+    ].filter(([, value]) => value);
+
+    if (rows.length === 0 && !enrichment.notasUso) return '';
+
+    const rowsHtml = rows.map(([label, value]) => `<p><strong>${label}:</strong> ${escapeHtml(value)}</p>`).join('');
+    const notas = enrichment.notasUso ? `<p class="notas-uso">${escapeHtml(enrichment.notasUso)}</p>` : '';
+    return `<div class="enrichment">${rowsHtml}${notas}</div>`;
+}
+
+function renderEntry(entry) {
+    const types = Array.isArray(entry.types) ? entry.types.join(', ') : entry.types || '';
+    const typesHtml = types ? `<span class="word-types">${escapeHtml(types)}</span>` : '';
+
+    return `
         <div class="word-result">
             <div class="word-header">
-                <h1>${wordObj.lemma}</h1>
+                <h1>${escapeHtml(entry.lemma)}</h1>
                 ${typesHtml}
             </div>
-            ${metaHtml}
-            <div class="word-definition">
-                <p>${wordObj.definition}</p>
-            </div>
-            ${sourceHtml}
+            <ol class="senses">${entry.senses.map(renderSense).join('')}</ol>
+            ${renderExpressions(entry.expressions)}
+            ${renderEnrichment(entry.enrichment)}
         </div>
     `;
-    searchResults.innerHTML = wordPage;
-}
-
-// Function to display matching words
-function displayMatchingWords(words) {
-    const listItems = words.map((wordObj, index) => `<li class="word-item" data-word-index="${index}">${wordObj.word}</li>`).join('');
-    searchResults.innerHTML = `<ul class="search-list">${listItems}</ul>`;
-    
-    // Add event listeners to word items
-    document.querySelectorAll('.word-item').forEach(item => {
-        item.addEventListener('click', function() {
-            const wordIndex = this.getAttribute('data-word-index');
-            const selectedWord = words[wordIndex];
-            if (selectedWord) {
-                displayWord(selectedWord);
-            }
-        });
-    });
 }

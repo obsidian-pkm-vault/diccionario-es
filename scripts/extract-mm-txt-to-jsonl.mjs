@@ -2,6 +2,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 const DEFAULT_INPUT = path.resolve('data/diccionario-maria-moliner.txt');
 const DEFAULT_OUTPUT = path.resolve('data/diccionario-maria-moliner.jsonl');
@@ -11,6 +12,9 @@ const APPENDIX_MARKER = /^AP(?:E|É)NDICE\b/u;
 const TYPE_REGEX = /(?:^|[\s,;])(?<type>adj|adv|m|f|n|tr|intr|prnl|prep|conj|interj|abs|aux|pl|sing|pron|art)\./giu;
 const CONNECTOR_GAP_REGEX = /^\s*(?:y|o|u|e|,)??\s*$/iu;
 const HEADER_MARKER_REGEX = /\s+(?:\d+\s+)?(?:\([^)]*\)\s+)*(?:Part\.|adj\.|adv\.|m\.|f\.|n\.|tr\.|intr\.|prnl\.|prep\.|conj\.|interj\.|abs\.|aux\.|pl\.|sing\.|pron\.|art\.)/iu;
+const PAGE_NUMBER_LINE_REGEX = /^\s*\d{1,4}\s*$/u;
+const SCAN_NOISE_LINE_REGEX = /^[^\p{Ll}\d]{1,12}$/u;
+const DISQUALIFYING_PREFIX_REGEX = /[:"'“”‘’ʻ=©]/u;
 
 function parseArgs(argv) {
   const options = {
@@ -51,13 +55,15 @@ function parseArgs(argv) {
   return options;
 }
 
-function splitIntoBlocks(lines, startLine) {
+export function splitIntoBlocks(lines, startLine) {
   const blocks = [];
   let currentLines = [];
   let blockStartLine = startLine;
   let lastContentLine = startLine - 1;
 
-  for (let offset = 0; offset < lines.length; offset += 1) {
+  let offset = 0;
+
+  while (offset < lines.length) {
     const absoluteLine = startLine + offset;
     const line = lines[offset];
 
@@ -65,15 +71,48 @@ function splitIntoBlocks(lines, startLine) {
       break;
     }
 
+    if (currentLines.length === 0 && line.trim() !== '' && (PAGE_NUMBER_LINE_REGEX.test(line) || SCAN_NOISE_LINE_REGEX.test(line))) {
+      offset += 1;
+      continue;
+    }
+
     if (line.trim() === '') {
       if (currentLines.length > 0) {
+        let peek = offset + 1;
+        let sawNoise = false;
+
+        while (peek < lines.length) {
+          while (peek < lines.length && lines[peek].trim() === '') {
+            peek += 1;
+          }
+
+          const candidate = peek < lines.length ? lines[peek].trim() : '';
+
+          if (candidate && (PAGE_NUMBER_LINE_REGEX.test(candidate) || SCAN_NOISE_LINE_REGEX.test(candidate))) {
+            sawNoise = true;
+            peek += 1;
+            continue;
+          }
+
+          break;
+        }
+
+        const nextContentLine = peek < lines.length ? lines[peek] : '';
+
+        if (sawNoise && nextContentLine && !looksLikeEntryStart(lines, peek)) {
+          offset = peek;
+          continue;
+        }
+
         blocks.push({
           startLine: blockStartLine,
-          endLine: absoluteLine - 1,
+          endLine: lastContentLine,
           lines: currentLines,
         });
         currentLines = [];
       }
+
+      offset += 1;
       continue;
     }
 
@@ -83,6 +122,7 @@ function splitIntoBlocks(lines, startLine) {
 
     currentLines.push(line);
     lastContentLine = absoluteLine;
+    offset += 1;
   }
 
   if (currentLines.length > 0) {
@@ -135,6 +175,30 @@ function collectAllHeaderTypes(text) {
   return [...window.matchAll(TYPE_REGEX)];
 }
 
+export function joinLookaheadWindow(lines, startIndex, maxLines = 5) {
+  const collected = [];
+
+  for (let i = startIndex; i < lines.length && collected.length < maxLines; i += 1) {
+    if (lines[i].trim() === '') break;
+    collected.push(lines[i]);
+  }
+
+  return collected.join(' ');
+}
+
+export function looksLikeEntryStart(lines, startIndex) {
+  const window = joinLookaheadWindow(lines, startIndex).trim();
+
+  if (!/^\p{Ll}/u.test(window)) {
+    return false;
+  }
+
+  const scanWindow = window.slice(0, 220);
+  const matches = [...scanWindow.matchAll(TYPE_REGEX)];
+
+  return matches.some((match) => !DISQUALIFYING_PREFIX_REGEX.test(scanWindow.slice(0, match.index)));
+}
+
 function cleanLemmaPrefix(prefix) {
   return prefix
     .replace(/\([^)]*\)\s*$/u, '')
@@ -164,7 +228,7 @@ function extractLemma(text) {
   };
 }
 
-function makeId(lemma) {
+export function makeId(lemma) {
   return lemma
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
@@ -261,4 +325,6 @@ function main() {
   }
 }
 
-main();
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main();
+}

@@ -148,3 +148,118 @@ button:hover {
     padding-top: 15px;
     border-top: 1px solid #eee;
 }
+
+.no-results {
+    color: #999;
+    text-align: center;
+}
+
+ol.senses {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+li.sense {
+    margin: 0 0 18px 0;
+    padding-bottom: 14px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+li.sense:last-child {
+    border-bottom: none;
+}
+
+li.sense p, li.subsense p {
+    line-height: 1.7;
+    color: #333;
+    margin: 0 0 6px 0;
+}
+
+.sense-number {
+    font-weight: bold;
+    color: #667eea;
+}
+
+ul.subsenses {
+    list-style: none;
+    margin: 8px 0 0 20px;
+    padding: 10px 0 0 15px;
+    border-left: 3px solid #e8eaf6;
+}
+
+li.subsense {
+    margin-bottom: 10px;
+}
+
+ul.examples {
+    list-style: none;
+    margin: 6px 0;
+    padding: 0;
+    color: #555;
+    font-style: italic;
+}
+
+ul.examples li::before {
+    content: "";
+}
+
+ul.catalog {
+    margin: 6px 0;
+    padding-left: 20px;
+    color: #555;
+    font-size: 0.95em;
+}
+
+.tag-line {
+    font-size: 0.9em;
+    color: #555;
+    margin: 4px 0;
+}
+
+.expressions {
+    margin-top: 25px;
+    padding-top: 15px;
+    border-top: 2px solid #f0f0f0;
+}
+
+.expressions h2 {
+    color: #764ba2;
+    font-size: 1.2em;
+    margin-bottom: 10px;
+}
+
+.expression {
+    background-color: #faf9fc;
+    border-radius: 8px;
+    padding: 12px 15px;
+    margin-bottom: 12px;
+}
+
+.expression h3 {
+    margin: 0 0 8px 0;
+    font-size: 1em;
+    color: #444;
+    letter-spacing: 0.5px;
+}
+
+.enrichment {
+    margin-top: 20px;
+    padding: 15px;
+    background-color: #f5f5f5;
+    border-radius: 8px;
+    font-size: 0.92em;
+    color: #444;
+}
+
+.enrichment p {
+    margin: 4px 0;
+}
+
+.enrichment .notas-uso {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid #e0e0e0;
+    line-height: 1.6;
+    white-space: pre-line;
+}
