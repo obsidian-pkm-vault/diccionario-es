@@ -21,22 +21,24 @@ index.html, main.js, style.css   — frontend (búsqueda + panel de resultado)
 server.mjs                        — servidor local: estáticos + /api/search, /api/entry/:id
 scripts/lib/                      — lógica de parseo/lectura, reutilizable
 scripts/*.mjs                     — CLI para regenerar los datos
-data/                             — fuentes + datos generados (jsonl, sqlite)
+data/                              — solo diccionario-maria-moliner.sqlite se commitea; el resto son fuentes con copyright (gitignored) o subproductos regenerables
 info/roadmap.md                   — plan detallado, decisiones de diseño, resultados de cada tarea
 ```
 
 ## Regenerar los datos
 
-Los archivos generados (`data/diccionario-maria-moliner*.jsonl`, `data/diccionario-maria-moliner.sqlite`) ya están en el repo. Para regenerarlos desde las fuentes:
+Solo `data/diccionario-maria-moliner.sqlite` está en el repo — es lo único que la app lee en tiempo real. Los jsonl intermedios (`data/diccionario-maria-moliner*.jsonl`) son subproductos del pipeline, no se commitean.
+
+**`data/book/` y `data/Diccionario_Maria_Moliner_3a_ed/` (el `.txt` OCR y el índice Lucene) tampoco están en el repo** (`.gitignore`, son las fuentes con derechos de autor) — sin esos archivos localmente no se puede regenerar nada. Si los tienes:
 
 ```sh
 # 1. Extrae del .txt OCR (data/book/diccionario-maria-moliner.txt) — acepciones, subacepciones, catálogo, expresiones
 node scripts/extract-mm-txt-to-jsonl.mjs
 
-# 2. Extrae del índice Lucene (data/Diccionario_Maria_Moliner_3a_ed/Setup/index/todo/) — etimología, área/nivel de uso, nombre científico, conjugación, etc.
+# 2. Extrae del índice Lucene (data/Diccionario_Maria_Moliner_3a_ed/Setup/index/todo/) — etymology, usageArea, usageLevel, scientificName, conjugation, etc.
 node scripts/extract-mm-lucene-to-jsonl.mjs
 
-# 3. Combina ambas fuentes (enriquece las entradas del .txt, rellena con las que solo están en Lucene) y escribe el SQLite + jsonl final
+# 3. Combina ambas fuentes (enriquece las entradas del .txt, rellena con las que solo están en Lucene) y escribe el SQLite final
 node scripts/parse-mm-definitions.mjs
 ```
 
