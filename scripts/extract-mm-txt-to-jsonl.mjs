@@ -228,7 +228,7 @@ function extractLemma(text) {
   };
 }
 
-function makeId(lemma) {
+export function makeId(lemma) {
   return lemma
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
