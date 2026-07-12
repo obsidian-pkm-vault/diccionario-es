@@ -6,6 +6,15 @@ No sobre-invertir en infraestructura antes de validar valor. Ya existen recursos
 
 **Decisión:** empezar pequeño (SQLite + JSON/JSONL, consulta local, web mínima), escalar (API, relaciones más ricas, grafo) solo si hay tiempo sostenido, continuidad y el MVP ya demostró utilidad.
 
+## Flujo de trabajo
+
+El desarrollo activo se realiza en **worktrees** separados de `main`. Cada worktree implementa una feature o fase del roadmap. Cuando el trabajo en un worktree está completo y estable (tests verdes, datos regenerados), se **mergea a `main`** para integrarlo.
+
+**Worktrees activos:**
+- `parser-acepciones` — Fase 1 del parser de acepciones (extractor mejorado + segmenter)
+
+**Regla:** nunca trabajar directamente en `main` salvo para docs o fixes urgentes. Todo avance significativo va en un worktree, se prueba ahí, y luego se mergea.
+
 ---
 
 ## Fuentes de datos disponibles
