@@ -107,7 +107,7 @@ Extraer del texto plano todo lo que se pueda con regex. Ya implementado:
 - [x] Orquestador CLI (`scripts/parse-mm-definitions.mjs`)
 - [x] Validación manual (~20 lemas)
 
-### Fase 2 — Enriquecimiento vía Lucene ✅ viabilidad confirmada, en progreso
+### Fase 2 — Enriquecimiento vía Lucene — datos listos (Task 8-11 ✅), falta conectar la app (Task 12-14)
 
 **Formato confirmado por ingeniería inversa** (índice `todo/`, `_7kh.cfs`, 137MB): formato de compound file Lucene pre-4.x (sin header de codec). Directorio: VInt fileCount, luego por archivo `{Int64 offset big-endian, String VInt-len+UTF8}`. Contiene 8 sub-archivos: `.fnm` (esquema de 36 campos), `.frq`/`.prx`/`.tii`/`.tis`/`.nrm` (índice de términos, no usados), `.fdx` (array de Int64, offset por documento), `.fdt` (campos guardados, **comprimidos con zlib/deflate**, formato `VInt numFields` + por campo `{VInt fieldNumber, byte bits, VInt len, bytes}`).
 
@@ -123,22 +123,24 @@ Extraer del texto plano todo lo que se pueda con regex. Ya implementado:
 2. Los ~50,000 lemas que solo existen en Lucene se añaden como entradas nuevas con una sola acepción plana (texto de `acepcion`, sin puntuación reconstruible) más los mismos campos cortos. Se marcan con `source` distinto para diferenciarlas.
 3. No se usan `sinonimos`/`catalogo`/`ejemplo`/`expresionesPluriverbales` de Lucene para reemplazar la extracción ya existente — sería una regresión de calidad ahí.
 
-#### Task 8 — Lector Lucene CFS de bajo nivel (pendiente)
-- `scripts/lib/lucene-cfs-reader.mjs`: `parseCompoundFileDirectory()`, `parseFieldNames()`, `readStoredFields()` (inflate zlib + strip prefijo `@`)
-- Tests con buffers sintéticos pequeños (no contra el archivo real de 137MB)
+#### Task 8 — Lector Lucene CFS de bajo nivel ✅ (hecho en `parser-acepciones`)
+- `scripts/lib/lucene-cfs-reader.mjs`: `parseCompoundFileDirectory()`, `parseFieldNames()`, `readStoredFields()` (inflate zlib solo si `bits & FIELD_IS_COMPRESSED`, verificado: en este archivo esa bandera está siempre activa — valores de `bits` vistos: `4`/`5`)
+- Tests con buffers sintéticos pequeños (5 tests), sin depender del archivo real de 137MB
+- Verificado contra el archivo real: 88,112 documentos decodificados en ~7.5s, 0 errores
 
-#### Task 9 — Extractor Lucene → jsonl plano (pendiente)
-- `scripts/extract-mm-lucene-to-jsonl.mjs`, mismo estilo que `extract-mm-txt-to-jsonl.mjs`
-- Parsea `lema` (`"a 1"` → lemma `"a"` + homógrafo `1`), normaliza los 36 campos a un registro plano
-- Salida: `data/diccionario-maria-moliner-lucene.jsonl`
+#### Task 9 — Extractor Lucene → jsonl plano ✅ (hecho en `parser-acepciones`)
+- `scripts/extract-mm-lucene-to-jsonl.mjs`, mismo estilo que `extract-mm-txt-to-jsonl.mjs`; reutiliza `makeId()` (exportado desde ese archivo) para que los ids coincidan entre ambas fuentes
+- Parsea `lema` (`"a 1"` → lemma `"a"` + homógrafo `1`), separa campos `|`-delimitados en arrays, trata `antiguo`/`desuso` como booleanos, limpia el sentinela `@`
+- Salida: `data/diccionario-maria-moliner-lucene.jsonl` — 88,112 entradas, 26,980 con etimología, 15,915 con sinónimos, 10,612 con área de uso, 6,770 con nivel de uso, 2,644 con nombre científico, 985 con conjugación; solo 1 con definición vacía
 
-#### Task 10 — Fusión: enriquecer entradas existentes + rellenar huecos (pendiente)
-- Emparejar por lema+homógrafo contra `data/diccionario-maria-moliner.jsonl`
-- Match → añadir columnas de enriquecimiento a la entrada existente
-- Sin match → nueva entrada plana, `source` distinto
-- Ampliar esquema SQLite (`entries`): columnas nullable para los campos cortos
+#### Task 10 — Fusión: enriquecer entradas existentes + rellenar huecos ✅ (hecho en `parser-acepciones`)
+- `matchLuceneToTxtEntries()`: agrupa por id y empareja homógrafos por posición dentro del grupo (ambas fuentes preservan el orden alfabético del diccionario original, así que la posición es más fiable que el número de homógrafo, que no siempre está presente en ambos lados). Verificado contra el corpus completo: 35,957/37,686 emparejados (95.4%), solo 323 con diferencia de lema entre fuentes (ruido de normalización esperado: acentos, comillas OCR, guiones de prefijo)
+- `entries` ganó columnas nullable: `etimologia`, `area_uso`, `nivel_uso`, `cat_gram`, `nombre_cientifico`, `conjugacion`, `notas_uso`, `voz`, `anagrama`, `antiguo`, `desuso`, `sinonimos_lucene` (arrays como JSON text, igual que `types`)
+- `buildGapFillRecord()` envuelve un registro Lucene-only en la misma forma que `buildEntry()`/`insertEntry()` esperan; al no tener puntuación no hay nada que dividir, así que produce una sola acepción plana — comportamiento correcto y esperado, no un bug
+- Verificado contra el corpus completo: **89,841 entradas totales** (37,686 `.txt`, 35,957 de ellas enriquecidas + 52,155 nuevas de Lucene), 2.7s, 0 crashes. Caso de control (`a` 2, preposición, 23 acepciones): mantiene su estructura Fase 1 intacta y recibe `etimologia`/`catGram`/`notasUso` del homógrafo correcto
 
-#### Task 11 — Regenerar datos y validar contra el corpus completo (pendiente)
+#### Task 11 — Regenerar datos y validar contra el corpus completo ✅
+Validación ya cubierta dentro de Task 8-10 (0 crashes en cada etapa, conteos cruzados verificados de forma independiente en cada paso). Sin hallazgos nuevos que registrar.
 
 #### Task 12 — Conectar la app (`index.html`/`main.js`) a los datos estructurados/enriquecidos (pendiente)
 Actualmente la app solo lee `definition` plano del jsonl v1; no usa nada de Fase 1. Mostrar acepciones/subacepciones/catálogo/expresiones + campos nuevos.
