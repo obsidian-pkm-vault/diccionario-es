@@ -107,18 +107,45 @@ Extraer del texto plano todo lo que se pueda con regex. Ya implementado:
 - [x] Orquestador CLI (`scripts/parse-mm-definitions.mjs`)
 - [x] Validación manual (~20 lemas)
 
-### Fase 2 — Parsear Lucene (si se necesita más precisión)
-Si los sinónimos extraídos del `.txt` no son suficientemente limpios, parsear el índice `todo/` para obtener `sinonimos`, `etimologia`, `areaUso`, `nivelUso`, `nombreCientifico`, `conjugacion`.
+### Fase 2 — Enriquecimiento vía Lucene ✅ viabilidad confirmada, en progreso
 
-**Formato Lucene `.cfs`:** archivo compuesto que contiene:
-- `.fnm` — nombres de campos
-- `.fdt` — datos de campo (texto)
-- `.frq` — frecuencias de términos
-- `.prx` — posiciones de términos
-- `.tii` / `.tis` — índice de términos
-- `.nrm` — normas de campo
+**Formato confirmado por ingeniería inversa** (índice `todo/`, `_7kh.cfs`, 137MB): formato de compound file Lucene pre-4.x (sin header de codec). Directorio: VInt fileCount, luego por archivo `{Int64 offset big-endian, String VInt-len+UTF8}`. Contiene 8 sub-archivos: `.fnm` (esquema de 36 campos), `.frq`/`.prx`/`.tii`/`.tis`/`.nrm` (índice de términos, no usados), `.fdx` (array de Int64, offset por documento), `.fdt` (campos guardados, **comprimidos con zlib/deflate**, formato `VInt numFields` + por campo `{VInt fieldNumber, byte bits, VInt len, bytes}`).
 
-Estrategia propuesta: buscar librería Node.js que lea Lucene índices, o implementar parser mínimo para `.fdt` (datos de campo) que es donde está el texto estructurado.
+**Hallazgos clave (verificados contra el archivo real completo, 88,112 documentos, 0 fallos de inflate):**
+- El índice tiene **88,102 lemas** (+10 de apéndice) contra los **37,686** que extrae el pipeline de `.txt` — más del doble. Confirmado con muestreo: 8 de 9 lemas Lucene al azar (`aarónico, -a`, `aaronita`, `ababillarse`...) no existen en el jsonl actual.
+- Los nombres de campo decodificados coinciden exactamente con la tabla de este documento (`sinonimos`, `etimologia`, `areaUso`, `nivelUso`, `nombreCientifico`, `conjugacion`, `catGram`, etc.), validando el formato.
+- **Los campos de texto largo (`acepcion`, `texto`, `ejemplo`, `catalogo`, `expresionesPluriverbales`) están sin puntuación** (texto analizado para búsqueda, no texto de presentación): sin puntos, sin comas, sin marcadores `©`/`O `/`/`. No se pueden reutilizar los splitters de Task 3 sobre este texto — la idea original de "Lucene reemplaza al `.txt` como fuente primaria" no es viable.
+- Campos cortos sí son limpios y útiles tal cual: `etimologia` (`"| latín | | germánico |"`), `catGram` (`"| verbo transitivo |"`), `areaUso`, `nivelUso`, `nombreCientifico`, `conjugacion`, `anagrama`, `antiguo`, `desuso`, `voz`. Ninguno existe en el `.txt`.
+- `sinonimos` es utilizable (lista separada por espacios) pero plana (no asociada a una acepción concreta) — menor fidelidad que la extracción por acepción que ya hace Task 2-4 sobre el `.txt`.
+
+**Estrategia adoptada — enriquecer, no reemplazar:**
+1. Las 37,686 entradas ya extraídas del `.txt` mantienen su estructura rica de Task 1-7 (acepciones numeradas, subacepciones, catálogo, expresiones) sin tocar. Se les añaden los campos cortos de Lucene (`etimologia`, `areaUso`, `nivelUso`, `nombreCientifico`, `conjugacion`, `catGram`, `anagrama`, `antiguo`, `desuso`, `voz`) emparejando por lema + número de homógrafo.
+2. Los ~50,000 lemas que solo existen en Lucene se añaden como entradas nuevas con una sola acepción plana (texto de `acepcion`, sin puntuación reconstruible) más los mismos campos cortos. Se marcan con `source` distinto para diferenciarlas.
+3. No se usan `sinonimos`/`catalogo`/`ejemplo`/`expresionesPluriverbales` de Lucene para reemplazar la extracción ya existente — sería una regresión de calidad ahí.
+
+#### Task 8 — Lector Lucene CFS de bajo nivel (pendiente)
+- `scripts/lib/lucene-cfs-reader.mjs`: `parseCompoundFileDirectory()`, `parseFieldNames()`, `readStoredFields()` (inflate zlib + strip prefijo `@`)
+- Tests con buffers sintéticos pequeños (no contra el archivo real de 137MB)
+
+#### Task 9 — Extractor Lucene → jsonl plano (pendiente)
+- `scripts/extract-mm-lucene-to-jsonl.mjs`, mismo estilo que `extract-mm-txt-to-jsonl.mjs`
+- Parsea `lema` (`"a 1"` → lemma `"a"` + homógrafo `1`), normaliza los 36 campos a un registro plano
+- Salida: `data/diccionario-maria-moliner-lucene.jsonl`
+
+#### Task 10 — Fusión: enriquecer entradas existentes + rellenar huecos (pendiente)
+- Emparejar por lema+homógrafo contra `data/diccionario-maria-moliner.jsonl`
+- Match → añadir columnas de enriquecimiento a la entrada existente
+- Sin match → nueva entrada plana, `source` distinto
+- Ampliar esquema SQLite (`entries`): columnas nullable para los campos cortos
+
+#### Task 11 — Regenerar datos y validar contra el corpus completo (pendiente)
+
+#### Task 12 — Conectar la app (`index.html`/`main.js`) a los datos estructurados/enriquecidos (pendiente)
+Actualmente la app solo lee `definition` plano del jsonl v1; no usa nada de Fase 1. Mostrar acepciones/subacepciones/catálogo/expresiones + campos nuevos.
+
+#### Task 13 — Probar la app en navegador (pendiente)
+
+#### Task 14 — Mergear `parser-acepciones` a `main` (pendiente, solo tras Task 12-13)
 
 ### Fase 3 — Enriquecimiento externo (póst-MVP)
 - `semanticField` vía WordNet/ConceptNet/OMW
