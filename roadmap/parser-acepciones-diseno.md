@@ -113,7 +113,15 @@ El mismo paso de parseo escribe además `data/diccionario-maria-moliner-v2.jsonl
 
 - Regenerar jsonl base, confirmar que `ir` (y otras entradas conocidas por cruzar salto de página) ya no queda truncado.
 - Muestra manual de ~20 lemas (`a`, `casa`, `ir`, `abandonar`, `abaratar`, `abarcar` — estas tres últimas confirmadas con `=` real durante la auditoría — y ~14 más variados en longitud/complejidad) comparados contra el `.txt` original.
-- Estadísticas agregadas sobre las 37,792 entradas: % con ≥1 acepción parseada, % con sinónimos encontrados, % con catálogo encontrado, % con antónimos heurísticos encontrados, % con expresiones encontradas — para calibrar si el parser propio basta o hace falta el paso 5 (enriquecimiento externo).
+- Estadísticas agregadas sobre las ~37,686 entradas: % con ≥1 acepción parseada, % con sinónimos encontrados, % con catálogo encontrado, % con antónimos heurísticos encontrados, % con expresiones encontradas — para calibrar si el parser propio basta o hace falta el paso 5 (enriquecimiento externo).
+
+## Límite conocido: 16 filas basura residuales (aceptado)
+
+Durante la corrección del bug de extracción (`looksLikeEntryStart`, ver commits en `scripts/extract-mm-txt-to-jsonl.mjs`), ampliar el lookahead de 1 a 5 líneas arregló 12 entradas mal archivadas/desaparecidas pero introdujo 67 filas basura (fragmentos de prosa continua tratados como lemas nuevos, p. ej. dentro de `echar`/`pasar`). Un heurístico de "prefijo limpio" (rechazar el match si hay `:`/comilla/`=`/`©` antes del marcador gramatical, evidencia de 18 casos reales sin excepciones) redujo esas 67 a 16 residuales, recuperó las 12 entradas reales + 1 bonus (`temer`) + corrigió 63 casos de un bug viejo no relacionado que ya existía antes de este trabajo. `echar` recuperado al 100% (3386 caracteres, valor exacto pre-bug). Cero entradas reales perdidas.
+
+Las 16 filas basura restantes (ejemplos: `pone-delante-de-los-toros-para-que-los-guie-3-inf` fragmento de `cabestro`, `medico-a-casa-de-un-enfermo-para-examinarle`, `una-cofradia-mujer-encargada-de-vestir-las-image-nes`, y 13 más) no tienen `:`/comilla/`=`/`©` en su contexto específico, así que el heurístico actual no las detecta — haría falta una señal distinta para cerrar ese hueco.
+
+**Decisión (aprobada):** aceptar como límite conocido, no perseguir más — 0.04% del corpus (16 de ~37,686), retornos decrecientes tras varias rondas de investigación. Si el parser de acepciones (pasos siguientes) tropieza visiblemente con alguna de estas filas basura durante la validación manual, revisar entonces; si no, dejar así.
 
 ## Fuera de alcance (v1)
 
