@@ -3,7 +3,6 @@ import {
   extractSynonyms,
   extractCrossReferencesAsterisk,
   extractCrossReferencesVease,
-  detectAntonymRedirect,
   stripEnclosingQuotes,
   splitNumberedSenses,
   splitSubsenses,
@@ -22,7 +21,6 @@ function buildLeaf(text) {
     examples: afterExamples.examples,
     synonyms: afterSynonyms.synonyms,
     crossReferences: [...afterAsterisk.crossReferences, ...veaseRefs],
-    antonym: detectAntonymRedirect(afterAsterisk.text),
   };
 }
 

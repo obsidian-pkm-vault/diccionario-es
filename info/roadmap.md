@@ -167,8 +167,19 @@ Origen: errores reportados por el usuario en `info/tasks.md` tras usar la app.
 - **Limpieza revisada**: sin archivos ni módulos huérfanos que quitar del repo.
 - **Verificado**: pipeline completo regenerado — 37,687 entradas `.txt`, 88,112 Lucene, 36,161 enriquecidas correctamente (204 más que antes del fix de homógrafos), 89,638 entradas totales en SQLite (203 menos que las 89,841 previas, por eliminación de duplicados falsos de homógrafo). Probado en navegador real (Chrome DevTools MCP) contra `abanto` y `bonito`: 0 errores de consola, categoría/género se muestran separados y sin repetición.
 - **Nota:** sin suite de tests (removida a pedido del usuario, commit `6bb1c63`) — verificación hecha regenerando el pipeline completo y comparando contra ejemplos reales conocidos, más prueba visual en navegador.
+- Commiteado (`79711b0`) y pusheado a `origin/main`.
 
-## Estado: Fase 1 y Fase 2 completas, mergeadas a `main`. Task 15 (correcciones de calidad) aplicada sobre `main`, pendiente de commit. Fase 3 queda para el futuro (post-MVP, ver más abajo).
+#### Task 16 — Desactivar heurística de antónimo (0/8 en el corpus) ✅
+La nota pendiente de Task 7.2 ("requiere decidir: quitar el campo, o buscar otra señal") ya tenía la respuesta en los propios datos: `detectAntonymRedirect()` nunca acertó ni una vez en todo el corpus, y no existe ningún caso genuino de remisión para calibrar una regex mejor. Se desconectó de `buildLeaf()` (`mm-build-entry.mjs`) — deja de poblar el campo en vez de poblarlo mal. La función y su regex se dejan exportadas en `mm-segmenter.mjs` por si aparece una señal mejor más adelante; el esquema SQLite (`antonyms`) y el render en `main.js` se dejan intactos, simplemente quedan sin filas.
+- Verificado: tabla `antonyms` pasó de 8 filas (todas falsos positivos conocidos) a 0 tras regenerar.
+
+### Bugs conocidos, sin corregir
+Documentados también en `info/tasks.md`:
+- **Colisión asterisco/comilla suelta** (Task 7.3): `*palabra` a veces OCR'd como comilla suelta, hace que `extractExamples()` trague prosa real como ejemplo. Requiere repensar cómo `extractExamples`/`extractCrossReferencesAsterisk` distinguen ambos casos.
+- **Sinónimos Lucene fragmentados**: sin delimitador en la fuente, frases multi-palabra como "armar una bronca" quedan como 3 sinónimos sueltos. Dedup ya aplicado (Task 15); la fragmentación en sí es una limitación de los datos de origen, no del parser.
+- **~0.3% de expresiones cortadas mal por ruido OCR** (Task 3): `!` en vez de `.`, `l.` OCR'd de `I.`, puntos dobles.
+
+## Estado: Fase 1 y Fase 2 completas, mergeadas a `main`. Task 15 y 16 (correcciones de calidad) commiteadas. Fase 3 queda para el futuro (post-MVP, ver más abajo).
 
 ### Fase 3 — Enriquecimiento externo (póst-MVP)
 - `semanticField` vía WordNet/ConceptNet/OMW

@@ -1,22 +1,12 @@
 # Tasks
 
-## Bugs a corregir
+Historial de lo ya resuelto: `info/roadmap.md` (Task 15, Task 16).
 
-- [x] Palabras cortadas mal: "vesti- do", "desti- nado" — regex de `normalizeBlock` en `extract-mm-txt-to-jsonl.mjs` no toleraba el espacio OCR antes del salto de línea. Corregido y datos regenerados.
-- [x] Categoría gramatical repetida en misma palabra: "Categoría: adjetivo, masculino, adjetivo, masculino" — `parsePipeList` no deduplicaba, y encima mezclaba categoría con género en el mismo campo. Corregido: dedup + separación en `partOfSpeech`/`gender` (ver `mm-grammar.mjs`).
-- [x] Nivel de uso repetido en misma palabra: "Nivel de uso: informal, informal, informal" — mismo `parsePipeList`, mismo fix (dedup).
-- [x] Palabras duplicadas en resultados de búsqueda ("bonito 2, -a" / "bonito' (Sarda sarda) m." / "bonito", -a 1 adj.") — dos causas: `parseLemaField` no reconocía el número de homógrafo cuando no estaba al final del lema (creaba una entrada Lucene duplicada en vez de enriquecer la existente), y el lema mostrado no limpiaba las marcas de comilla OCR. Ambas corregidas; "bonito" ahora muestra 2 resultados limpios en vez de 3.
-- [x] Faltan categorías gramaticales: sustantivo, adjetivo, verbo, pronombre, adverbio, preposición, conjunción, interjección, determinante — nuevo `scripts/lib/mm-grammar.mjs`, clasifica el texto libre de `catGram` a estas categorías canónicas.
-- [x] Falta género: femenino / masculino / neutro — nuevo campo `gender` (columna SQLite + UI), extraído del mismo texto libre.
-- [x] (encontrado durante la verificación, no listado originalmente) Sinónimos Lucene repetidos, ej. "Alimoche, boñiguero, Alimoche, Alimoche" — mismo patrón de falta de dedup, corregido.
+## Pendiente
 
-## Limpieza
-
-- [x] Eliminar código y archivos innecesarios — revisado: sin archivos huérfanos ni módulos sin usar. El repo ya está limpio (`data/sample` se eliminó en un merge anterior, `.gitignore` correcto). Nada que quitar por ahora.
-
-## Futuro
-
-- [x] Agrupar visualmente: Etimología, Categoría, Nivel de uso, Sinónimo, Antónimo — panel de enriquecimiento reorganizado en grupos (Categoría+Género / Área+Nivel de uso / Etimología / Nombre científico+Conjugación+Sinónimos) con separadores sutiles. Sinónimo/Antónimo por acepción ya vivían agrupados junto a cada sentido (`renderLeafExtras`), sin cambios ahí.
+- [ ] **Colisión asterisco/comilla suelta** — `*palabra` (referencia cruzada) a veces OCR'd como comilla curva suelta (visto en `bendecir`, `abandonar`). `extractExamples()` empareja comillas tolerante a desajustes OCR a propósito, así que una comilla-asterisco suelta hace que trague prosa real como si fuera ejemplo, corrompiendo la definición. Arreglarlo bien requiere repensar cómo `extractExamples`/`extractCrossReferencesAsterisk` distinguen ambos casos — no trivial, no se tocó.
+- [ ] **Sinónimos Lucene fragmentados** — el campo `sinonimos` de Lucene no tiene delimitador entre frases, así que "armar una bronca" se guarda como 3 sinónimos sueltos (`armar`, `una`, `bronca`) en vez de una frase. El dedup ya está, pero la fragmentación en sí no tiene fix limpio sin delimitador en la fuente — limitación de los datos, no del parser.
+- [ ] **~0.3% de expresiones cortadas mal** — ruido OCR variado: `!` en vez de `.` como fin de frase, `l.` OCR'd de `I.`, puntos dobles. Heurística de `splitExpressions` ya aceptada como imperfecta en ese margen — el corpus original no siempre da una señal limpia.
 
 ---
 
