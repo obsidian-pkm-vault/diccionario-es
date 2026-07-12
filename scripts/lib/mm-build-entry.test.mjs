@@ -63,8 +63,16 @@ test('buildEntry nests a © marked subsense with its own leaf extraction', () =>
       synonyms: [],
       crossReferences: [],
       antonym: null,
+      catalog: [],
     },
   ]);
+});
+
+test('buildEntry keeps O marked catalog items embedded inside a © subsense', () => {
+  const result = buildEntry(
+    'Toque de ánimas. © (pl.) Hora a que se hace. O Particularmente, la de la tarde.',
+  );
+  assert.deepEqual(result.senses[0].subsenses[0].catalog, ['Particularmente, la de la tarde.']);
 });
 
 test('buildEntry collects O marked catalog items as plain definitions', () => {

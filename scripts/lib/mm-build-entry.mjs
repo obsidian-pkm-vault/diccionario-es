@@ -26,6 +26,16 @@ function buildLeaf(text) {
   };
 }
 
+function buildSubsense(text) {
+  const { text: leafText, catalog } = splitCatalog(text);
+  const leaf = buildLeaf(leafText);
+
+  return {
+    ...leaf,
+    catalog: catalog.map((item) => buildLeaf(item).definition),
+  };
+}
+
 function buildSense(number, text) {
   const { text: withoutSubsenses, subsenses } = splitSubsenses(text);
   const { text: leafText, catalog } = splitCatalog(withoutSubsenses);
@@ -34,7 +44,7 @@ function buildSense(number, text) {
   return {
     number,
     ...leaf,
-    subsenses: subsenses.map((subsenseText) => buildLeaf(splitCatalog(subsenseText).text)),
+    subsenses: subsenses.map(buildSubsense),
     catalog: catalog.map((item) => buildLeaf(item).definition),
   };
 }
