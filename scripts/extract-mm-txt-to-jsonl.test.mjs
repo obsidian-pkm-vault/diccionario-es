@@ -86,3 +86,46 @@ test('splitIntoBlocks bridges two consecutive page-number lines separated by a b
     'sino alguna circunstancia del movimiento.',
   ]);
 });
+
+test('splitIntoBlocks does not bridge a page break onto an entry whose type marker is on its second line', () => {
+  const lines = [
+    'animizar tr. Dar animo, alentar.',
+    '',
+    '',
+    '500',
+    '',
+    '',
+    'animo («Con, Dar, Levantar, Perder, Tener») ',
+    'm. Energia para hacer algo o afrontar una dificultad.',
+  ];
+  const blocks = splitIntoBlocks(lines, 1);
+  assert.equal(blocks.length, 2);
+  assert.deepEqual(blocks[0].lines, ['animizar tr. Dar animo, alentar.']);
+  assert.deepEqual(blocks[1].lines, [
+    'animo («Con, Dar, Levantar, Perder, Tener») ',
+    'm. Energia para hacer algo o afrontar una dificultad.',
+  ]);
+});
+
+test('splitIntoBlocks skips a stray scan-noise line and still separates the real entry that follows', () => {
+  const lines = [
+    'previo m. Palabra anterior en el texto.',
+    '',
+    '',
+    'AA',
+    '',
+    '',
+    '501',
+    '',
+    '',
+    'actividad («En, Dedicar, Desarrollar») ',
+    'f. Estado de lo que se mueve o actua.',
+  ];
+  const blocks = splitIntoBlocks(lines, 1);
+  assert.equal(blocks.length, 2);
+  assert.deepEqual(blocks[0].lines, ['previo m. Palabra anterior en el texto.']);
+  assert.deepEqual(blocks[1].lines, [
+    'actividad («En, Dedicar, Desarrollar») ',
+    'f. Estado de lo que se mueve o actua.',
+  ]);
+});

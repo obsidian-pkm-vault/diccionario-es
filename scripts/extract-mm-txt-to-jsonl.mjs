@@ -13,6 +13,7 @@ const TYPE_REGEX = /(?:^|[\s,;])(?<type>adj|adv|m|f|n|tr|intr|prnl|prep|conj|int
 const CONNECTOR_GAP_REGEX = /^\s*(?:y|o|u|e|,)??\s*$/iu;
 const HEADER_MARKER_REGEX = /\s+(?:\d+\s+)?(?:\([^)]*\)\s+)*(?:Part\.|adj\.|adv\.|m\.|f\.|n\.|tr\.|intr\.|prnl\.|prep\.|conj\.|interj\.|abs\.|aux\.|pl\.|sing\.|pron\.|art\.)/iu;
 const PAGE_NUMBER_LINE_REGEX = /^\s*\d{1,4}\s*$/u;
+const SCAN_NOISE_LINE_REGEX = /^[^\p{Ll}\d]{1,12}$/u;
 
 function parseArgs(argv) {
   const options = {
@@ -69,7 +70,7 @@ export function splitIntoBlocks(lines, startLine) {
       break;
     }
 
-    if (line.trim() !== '' && PAGE_NUMBER_LINE_REGEX.test(line)) {
+    if (line.trim() !== '' && (PAGE_NUMBER_LINE_REGEX.test(line) || SCAN_NOISE_LINE_REGEX.test(line))) {
       offset += 1;
       continue;
     }
@@ -77,15 +78,17 @@ export function splitIntoBlocks(lines, startLine) {
     if (line.trim() === '') {
       if (currentLines.length > 0) {
         let peek = offset + 1;
-        let sawPageNumber = false;
+        let sawNoise = false;
 
         while (peek < lines.length) {
           while (peek < lines.length && lines[peek].trim() === '') {
             peek += 1;
           }
 
-          if (peek < lines.length && lines[peek].trim() !== '' && PAGE_NUMBER_LINE_REGEX.test(lines[peek])) {
-            sawPageNumber = true;
+          const candidate = peek < lines.length ? lines[peek].trim() : '';
+
+          if (candidate && (PAGE_NUMBER_LINE_REGEX.test(candidate) || SCAN_NOISE_LINE_REGEX.test(candidate))) {
+            sawNoise = true;
             peek += 1;
             continue;
           }
@@ -95,7 +98,7 @@ export function splitIntoBlocks(lines, startLine) {
 
         const nextContentLine = peek < lines.length ? lines[peek] : '';
 
-        if (sawPageNumber && nextContentLine && !looksLikeEntryStart(nextContentLine)) {
+        if (sawNoise && nextContentLine && !looksLikeEntryStart(lines, peek)) {
           offset = peek;
           continue;
         }
@@ -171,15 +174,26 @@ function collectAllHeaderTypes(text) {
   return [...window.matchAll(TYPE_REGEX)];
 }
 
-function looksLikeEntryStart(line) {
-  const trimmed = line.trim();
+function joinLookaheadWindow(lines, startIndex, maxLines = 5) {
+  const collected = [];
 
-  if (!/^\p{Ll}/u.test(trimmed)) {
+  for (let i = startIndex; i < lines.length && collected.length < maxLines; i += 1) {
+    if (lines[i].trim() === '') break;
+    collected.push(lines[i]);
+  }
+
+  return collected.join(' ');
+}
+
+function looksLikeEntryStart(lines, startIndex) {
+  const window = joinLookaheadWindow(lines, startIndex).trim();
+
+  if (!/^\p{Ll}/u.test(window)) {
     return false;
   }
 
-  const window = trimmed.slice(0, 220);
-  return [...window.matchAll(TYPE_REGEX)].length > 0;
+  const scanWindow = window.slice(0, 220);
+  return [...scanWindow.matchAll(TYPE_REGEX)].length > 0;
 }
 
 function cleanLemmaPrefix(prefix) {
