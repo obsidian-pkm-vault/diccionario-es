@@ -54,6 +54,7 @@ export function toJsonlRecord(record, built, enrichment = null) {
     jsonlRecord.usageArea = enrichment.usageArea;
     jsonlRecord.usageLevel = enrichment.usageLevel;
     jsonlRecord.partOfSpeech = enrichment.partOfSpeech;
+    jsonlRecord.gender = enrichment.gender;
     jsonlRecord.scientificName = enrichment.scientificName;
     jsonlRecord.conjugation = enrichment.conjugation;
     jsonlRecord.usageNotes = enrichment.usageNotes;

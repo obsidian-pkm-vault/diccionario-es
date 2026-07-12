@@ -113,21 +113,35 @@ function renderExpressions(expressions) {
 
 function renderEnrichment(enrichment) {
     if (!enrichment) return '';
-    const rows = [
-        ['Etimología', enrichment.etymology?.join(', ')],
-        ['Categoría', enrichment.partOfSpeech?.join(', ')],
-        ['Área de uso', enrichment.usageArea?.join(', ')],
-        ['Nivel de uso', enrichment.usageLevel?.join(', ')],
-        ['Nombre científico', enrichment.scientificName],
-        ['Conjugación', enrichment.conjugation],
-        ['Sinónimos (Lucene)', enrichment.synonymsLucene?.length ? enrichment.synonymsLucene.join(', ') : null],
-    ].filter(([, value]) => value);
+    const groups = [
+        [
+            ['Categoría', enrichment.partOfSpeech?.join(', ')],
+            ['Género', enrichment.gender?.join(', ')],
+        ],
+        [
+            ['Área de uso', enrichment.usageArea?.join(', ')],
+            ['Nivel de uso', enrichment.usageLevel?.join(', ')],
+        ],
+        [['Etimología', enrichment.etymology?.join(', ')]],
+        [
+            ['Nombre científico', enrichment.scientificName],
+            ['Conjugación', enrichment.conjugation],
+            ['Sinónimos (Lucene)', enrichment.synonymsLucene?.length ? enrichment.synonymsLucene.join(', ') : null],
+        ],
+    ]
+        .map((rows) => rows.filter(([, value]) => value))
+        .filter((rows) => rows.length > 0);
 
-    if (rows.length === 0 && !enrichment.usageNotes) return '';
+    if (groups.length === 0 && !enrichment.usageNotes) return '';
 
-    const rowsHtml = rows.map(([label, value]) => `<p><strong>${label}:</strong> ${escapeHtml(value)}</p>`).join('');
+    const groupsHtml = groups
+        .map(
+            (rows) =>
+                `<div class="enrichment-group">${rows.map(([label, value]) => `<p><strong>${label}:</strong> ${escapeHtml(value)}</p>`).join('')}</div>`,
+        )
+        .join('');
     const notas = enrichment.usageNotes ? `<p class="notas-uso">${escapeHtml(enrichment.usageNotes)}</p>` : '';
-    return `<div class="enrichment">${rowsHtml}${notas}</div>`;
+    return `<div class="enrichment">${groupsHtml}${notas}</div>`;
 }
 
 function renderEntry(entry) {

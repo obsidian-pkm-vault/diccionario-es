@@ -114,7 +114,7 @@ export function splitIntoBlocks(lines, startLine) {
 function normalizeBlock(lines) {
   return lines
     .join('\n')
-    .replace(/(\p{L})-\n(\p{Ll})/gu, '$1$2')
+    .replace(/(\p{L})-[ \t]*\n[ \t]*(\p{Ll})/gu, '$1$2')
     .replace(/\n+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
@@ -180,6 +180,8 @@ function cleanLemmaPrefix(prefix) {
     .replace(/\b\d+\s*$/u, '')
     .replace(/Part\.\s*$/iu, '')
     .replace(/\s+O\s*$/u, '')
+    .replace(/["'“”‘’ʻ]/gu, '')
+    .replace(/\s+/gu, ' ')
     .trim();
 }
 

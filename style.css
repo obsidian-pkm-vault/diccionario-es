@@ -256,6 +256,18 @@ ul.catalog {
     margin: 4px 0;
 }
 
+.enrichment-group {
+    padding: 6px 0;
+}
+
+.enrichment-group:not(:last-child) {
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.enrichment-group:first-child {
+    padding-top: 0;
+}
+
 .enrichment .notas-uso {
     margin-top: 10px;
     padding-top: 10px;

@@ -6,6 +6,7 @@ import { pathToFileURL } from 'node:url';
 import { parseCompoundFileDirectory, parseFieldNames, readStoredFields } from './lib/lucene-cfs-reader.mjs';
 import { makeId } from './extract-mm-txt-to-jsonl.mjs';
 import { parseArgs as parseCliArgs, resolvePath, parseInteger } from './lib/cli-args.mjs';
+import { classifyPhrases } from './lib/mm-grammar.mjs';
 
 const DEFAULT_INPUT = path.resolve('data/Diccionario_Maria_Moliner_3a_ed/Setup/index/todo/_7kh.cfs');
 const DEFAULT_OUTPUT = path.resolve('data/diccionario-maria-moliner-lucene.jsonl');
@@ -14,7 +15,9 @@ const AT_SENTINEL_REGEX = /^@\s*/u;
 
 // Maps each Lucene source field (fixed - baked into the index's .fnm schema) to
 // the English output field name used throughout the rest of the pipeline.
-const PIPE_LIST_FIELDS = { etimologia: 'etymology', areaUso: 'usageArea', nivelUso: 'usageLevel', catGram: 'partOfSpeech' };
+// catGram is handled separately (see normalizeLuceneRecord) since it needs
+// splitting into a clean grammatical category plus a separate gender field.
+const PIPE_LIST_FIELDS = { etimologia: 'etymology', areaUso: 'usageArea', nivelUso: 'usageLevel' };
 const BOOLEAN_FIELDS = { antiguo: 'archaic', desuso: 'obsolete' };
 const FREE_TEXT_FIELDS = {
   nombreCientifico: 'scientificName',
@@ -37,9 +40,10 @@ function parseArgs(argv) {
 }
 
 export function parseLemaField(rawLema) {
-  const match = /^(.*?)\s+(\d+)$/u.exec(rawLema);
+  const match = /^(.*?)\s+(\d+)\b(.*)$/u.exec(rawLema);
   if (!match) return { lemma: rawLema, homographNumber: null };
-  return { lemma: match[1], homographNumber: Number(match[2]) };
+  const lemma = `${match[1]}${match[3]}`.trim();
+  return { lemma, homographNumber: Number(match[2]) };
 }
 
 function stripSentinel(value) {
@@ -47,10 +51,11 @@ function stripSentinel(value) {
 }
 
 function parsePipeList(value) {
-  return stripSentinel(value)
+  const parts = stripSentinel(value)
     .split('|')
     .map((part) => part.trim())
     .filter(Boolean);
+  return [...new Set(parts)];
 }
 
 export function normalizeLuceneRecord(doc) {
@@ -67,6 +72,10 @@ export function normalizeLuceneRecord(doc) {
     record[outputField] = doc[sourceField] ? parsePipeList(doc[sourceField]) : [];
   }
 
+  const { categories, genders } = classifyPhrases(doc.catGram ? parsePipeList(doc.catGram) : []);
+  record.partOfSpeech = categories;
+  record.gender = genders;
+
   for (const [sourceField, outputField] of Object.entries(BOOLEAN_FIELDS)) {
     record[outputField] = Boolean(doc[sourceField]);
   }
@@ -76,7 +85,7 @@ export function normalizeLuceneRecord(doc) {
   }
 
   record.synonyms = doc.sinonimos
-    ? stripSentinel(doc.sinonimos).split(/\s+/u).filter(Boolean)
+    ? [...new Set(stripSentinel(doc.sinonimos).split(/\s+/u).filter(Boolean))]
     : [];
 
   return record;

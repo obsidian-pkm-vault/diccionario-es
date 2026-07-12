@@ -156,7 +156,19 @@ Probado con Chrome DevTools MCP contra el servidor real: búsqueda (debounce + b
 - Conflictos resueltos: `data/diccionario-maria-moliner.jsonl` → versión de `parser-acepciones` (37,686 entradas con los fixes de Task 1; la de `main`, 37,792, no los tenía). `data/sample/*` → se aceptó el borrado (fixtures de prototipo ya marcadas obsoletas en un commit previo del propio branch). `info/sources.md` → se mantuvo la versión de `main` (evolución del `roadmap/ref.md` que `parser-acepciones` había borrado antes de que existiera esa reorganización)
 - Verificado tras el merge: 81/81 tests, servidor arrancado en `main` y probado contra la base de datos real
 
-## Estado: Fase 1 y Fase 2 completas, mergeadas a `main`. Fase 3 queda para el futuro (post-MVP, ver más abajo).
+#### Task 15 — Corrección de bugs de calidad de datos (post-Fase 2) ✅ (hecho directamente en `main`, cambios sin commitear)
+Origen: errores reportados por el usuario en `info/tasks.md` tras usar la app.
+- **Palabras cortadas por salto de línea OCR** (`vesti- do`, `desti- nado`): `normalizeBlock` (`extract-mm-txt-to-jsonl.mjs`) no toleraba el espacio OCR entre el guion y el `\n` — la regex exigía el `\n` inmediatamente tras el guion. Ajustada a `/(\p{L})-[ \t]*\n[ \t]*(\p{Ll})/gu`.
+- **Categoría/nivel de uso/sinónimos Lucene repetidos** (ej. "informal, informal, informal"): `parsePipeList` no deduplicaba los segmentos separados por `|`. Corregido con `Set`. Mismo fix aplicado a `sinonimos` (bug no listado originalmente, encontrado en verificación manual: "Alimoche, boñiguero, Alimoche, Alimoche").
+- **Categoría y género mezclados en el mismo campo** (ej. "adjetivo, masculino, adjetivo, masculino"): `catGram` es texto libre en Lucene y nunca separaba la palabra de categoría de la de género. Causa real del bug reportado, más allá del simple duplicado.
+- **Homógrafos duplicados en búsqueda** (`bonito` con 3 resultados en vez de 2: `bonito 2, -a` / `bonito' (Sarda sarda) m.` / `bonito", -a 1 adj.`): `parseLemaField` solo reconocía el número de homógrafo al final del lema (`"bonito 1"`), no en medio (`"bonito 2, -a"`) — el emparejamiento con la entrada `.txt` fallaba y se creaba una entrada Lucene "gap-fill" duplicada en vez de enriquecer la existente. Regex corregida a `/^(.*?)\s+(\d+)\b(.*)$/u`. Además, `cleanLemmaPrefix` no limpiaba las marcas de comilla OCR (`'`, `"`, `"`) del lema mostrado — añadido el mismo strip que ya usaba `makeId()` para el id.
+- **Categorías gramaticales y género ausentes**: nuevo módulo `scripts/lib/mm-grammar.mjs` — clasifica el texto libre de `catGram` a 9 categorías canónicas (sustantivo, adjetivo, verbo, pronombre, adverbio, preposición, conjunción, interjección, determinante) y 3 géneros (masculino, femenino, neutro) como dos campos separados. Nueva columna SQLite `gender`; `part_of_speech` pasa de texto libre mezclado a categorías limpias y deduplicadas.
+- **UI**: panel de enriquecimiento reorganizado en grupos visuales (Categoría+Género / Área+Nivel de uso / Etimología / científico+conjugación+sinónimos) con separadores sutiles.
+- **Limpieza revisada**: sin archivos ni módulos huérfanos que quitar del repo.
+- **Verificado**: pipeline completo regenerado — 37,687 entradas `.txt`, 88,112 Lucene, 36,161 enriquecidas correctamente (204 más que antes del fix de homógrafos), 89,638 entradas totales en SQLite (203 menos que las 89,841 previas, por eliminación de duplicados falsos de homógrafo). Probado en navegador real (Chrome DevTools MCP) contra `abanto` y `bonito`: 0 errores de consola, categoría/género se muestran separados y sin repetición.
+- **Nota:** sin suite de tests (removida a pedido del usuario, commit `6bb1c63`) — verificación hecha regenerando el pipeline completo y comparando contra ejemplos reales conocidos, más prueba visual en navegador.
+
+## Estado: Fase 1 y Fase 2 completas, mergeadas a `main`. Task 15 (correcciones de calidad) aplicada sobre `main`, pendiente de commit. Fase 3 queda para el futuro (post-MVP, ver más abajo).
 
 ### Fase 3 — Enriquecimiento externo (póst-MVP)
 - `semanticField` vía WordNet/ConceptNet/OMW

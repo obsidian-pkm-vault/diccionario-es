@@ -74,6 +74,7 @@ export function getEntryDetail(db, entryId) {
           usageArea: parseJsonArray(entry.usage_area),
           usageLevel: parseJsonArray(entry.usage_level),
           partOfSpeech: parseJsonArray(entry.part_of_speech),
+          gender: parseJsonArray(entry.gender),
           scientificName: entry.scientific_name,
           conjugation: entry.conjugation,
           usageNotes: entry.usage_notes,

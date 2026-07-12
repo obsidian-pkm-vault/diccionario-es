@@ -14,6 +14,7 @@ export function createSchema(db) {
       usage_area TEXT,
       usage_level TEXT,
       part_of_speech TEXT,
+      gender TEXT,
       scientific_name TEXT,
       conjugation TEXT,
       usage_notes TEXT,
@@ -89,9 +90,9 @@ export function createWriter(db) {
     entry: db.prepare(
       `INSERT INTO entries (
         source_id, lemma, types, initial_meta, header, source, start_line, end_line,
-        etymology, usage_area, usage_level, part_of_speech, scientific_name, conjugation,
+        etymology, usage_area, usage_level, part_of_speech, gender, scientific_name, conjugation,
         usage_notes, headword, anagram, archaic, obsolete, synonyms_lucene
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ),
     expression: db.prepare('INSERT INTO expressions (entry_id, phrase) VALUES (?, ?)'),
     sense: db.prepare('INSERT INTO senses (entry_id, expression_id, number, definition) VALUES (?, ?, ?, ?)'),
@@ -139,6 +140,7 @@ export function createWriter(db) {
       enrichment?.usageArea ? JSON.stringify(enrichment.usageArea) : null,
       enrichment?.usageLevel ? JSON.stringify(enrichment.usageLevel) : null,
       enrichment?.partOfSpeech ? JSON.stringify(enrichment.partOfSpeech) : null,
+      enrichment?.gender ? JSON.stringify(enrichment.gender) : null,
       enrichment?.scientificName ?? null,
       enrichment?.conjugation ?? null,
       enrichment?.usageNotes ?? null,
