@@ -107,7 +107,7 @@ Extraer del texto plano todo lo que se pueda con regex. Ya implementado:
 - [x] Orquestador CLI (`scripts/parse-mm-definitions.mjs`)
 - [x] Validación manual (~20 lemas)
 
-### Fase 2 — Enriquecimiento vía Lucene — datos listos (Task 8-11 ✅), falta conectar la app (Task 12-14)
+### Fase 2 — Enriquecimiento vía Lucene ✅ completa, mergeada a `main`
 
 **Formato confirmado por ingeniería inversa** (índice `todo/`, `_7kh.cfs`, 137MB): formato de compound file Lucene pre-4.x (sin header de codec). Directorio: VInt fileCount, luego por archivo `{Int64 offset big-endian, String VInt-len+UTF8}`. Contiene 8 sub-archivos: `.fnm` (esquema de 36 campos), `.frq`/`.prx`/`.tii`/`.tis`/`.nrm` (índice de términos, no usados), `.fdx` (array de Int64, offset por documento), `.fdt` (campos guardados, **comprimidos con zlib/deflate**, formato `VInt numFields` + por campo `{VInt fieldNumber, byte bits, VInt len, bytes}`).
 
@@ -151,7 +151,12 @@ Validación ya cubierta dentro de Task 8-10 (0 crashes en cada etapa, conteos cr
 #### Task 13 — Probar la app en navegador ✅
 Probado con Chrome DevTools MCP contra el servidor real: búsqueda (debounce + botón Buscar), entrada rica con subacepción+sinónimos (`ademán`), entrada con catálogo (`ánima`), entrada con expresiones (`abogado, -a` — confirma visualmente el fix de `A. DEL EstaDo` de Task 3), entrada plana de Lucene (`aaronita`), búsqueda sin resultados. 0 errores de consola (solo el 404 automático del favicon del navegador). Confirmado visualmente el límite ya documentado de `sinonimosLucene` (fragmenta frases multi-palabra al no tener delimitador — ver `ánima`).
 
-#### Task 14 — Mergear `parser-acepciones` a `main` (pendiente)
+#### Task 14 — Mergear `parser-acepciones` a `main` ✅
+- Probado el merge en seco con `git merge-tree` antes de tocar nada — encontró conflictos reales que un `git merge` a ciegas habría resuelto mal
+- Conflictos resueltos: `data/diccionario-maria-moliner.jsonl` → versión de `parser-acepciones` (37,686 entradas con los fixes de Task 1; la de `main`, 37,792, no los tenía). `data/sample/*` → se aceptó el borrado (fixtures de prototipo ya marcadas obsoletas en un commit previo del propio branch). `info/sources.md` → se mantuvo la versión de `main` (evolución del `roadmap/ref.md` que `parser-acepciones` había borrado antes de que existiera esa reorganización)
+- Verificado tras el merge: 81/81 tests, servidor arrancado en `main` y probado contra la base de datos real
+
+## Estado: Fase 1 y Fase 2 completas, mergeadas a `main`. Fase 3 queda para el futuro (post-MVP, ver más abajo).
 
 ### Fase 3 — Enriquecimiento externo (póst-MVP)
 - `semanticField` vía WordNet/ConceptNet/OMW
