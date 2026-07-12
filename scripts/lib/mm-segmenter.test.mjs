@@ -89,6 +89,16 @@ test('splitNumberedSenses honors an explicit leading sense number', () => {
   ]);
 });
 
+test('splitNumberedSenses splits on a boundary whose sense starts with a lowercase grammatical marker', () => {
+  const result = splitNumberedSenses(
+    'Der. Defensor. 5 n. Der. En fútbol y otros deportes, jugador del equipo.',
+  );
+  assert.deepEqual(result, [
+    { number: 1, text: 'Der. Defensor.' },
+    { number: 5, text: 'n. Der. En fútbol y otros deportes, jugador del equipo.' },
+  ]);
+});
+
 test('splitNumberedSenses does not split on a number inside a quoted example', () => {
   const result = splitNumberedSenses(
     'Distancia: ʻA 10 km de Madrid”. 4 Distribución: ‘A tres por cabeza”.',

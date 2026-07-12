@@ -55,7 +55,11 @@ export function stripEnclosingQuotes(text) {
 }
 
 const LEADING_SENSE_NUMBER_REGEX = /^(\d{1,2})\s+/u;
-const SENSE_BOUNDARY_REGEX = /(?<=\.\s)(\d{1,2})\s+(?=[A-ZÁÉÍÓÚÑ¿¡(«])/gu;
+const GRAMMATICAL_TYPE_MARKER = '(?:adj|adv|m|f|n|tr|intr|prnl|prep|conj|interj|abs|aux|pl|sing|pron|art)\\.';
+const SENSE_BOUNDARY_REGEX = new RegExp(
+  `(?<=\\.\\s)(\\d{1,2})\\s+(?=[A-ZÁÉÍÓÚÑ¿¡(«]|${GRAMMATICAL_TYPE_MARKER})`,
+  'gu',
+);
 
 export function splitNumberedSenses(text) {
   let working = text;
