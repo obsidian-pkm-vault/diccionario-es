@@ -102,7 +102,7 @@ Extraer del texto plano todo lo que se pueda con regex. Ya implementado:
 - [x] `looksLikeEntryStart` robusto
 - [x] Extractores hoja: ejemplos, sinónimos, referencias cruzadas, antónimos (heurística)
 - [x] Splitters estructurales: acepciones numeradas, subacepciones (`©`), catálogo (`O `), expresiones (`/`)
-- [ ] `buildEntry()` — pipeline que compone extractores + splitters
+- [x] `buildEntry()` — pipeline que compone extractores + splitters
 - [ ] Escritor SQLite normalizado (`node:sqlite`)
 - [ ] Orquestador CLI (`scripts/parse-mm-definitions.mjs`)
 - [ ] Validación manual (~20 lemas)
@@ -147,14 +147,14 @@ Estrategia propuesta: buscar librería Node.js que lea Lucene índices, o implem
 - `splitNumberedSenses(text)` — acepciones numeradas (número tras `. `, o número inicial explícito). No confunde números dentro de ejemplos citados (solo separa tras límite de frase).
 - `splitSubsenses(text)` — subacepciones con `©`
 - `splitCatalog(text)` — catálogo con `O ` (tras `. ` o `, `)
-- `splitExpressions(text)` — expresiones `/ FRASE. cuerpo`, tolera OCR mixed-case en la frase
-- Tests para cada splitter, basados en fragmentos reales del corpus (23 tests, todos verdes)
-- Escaneo del corpus completo (37,792 entradas): 9,753 con múltiples acepciones, 3,330 con subacepciones, 7,339 con catálogo, 1,859 con expresiones. Falsos positivos encontrados solo en entradas ya truncadas por el límite conocido (16 fragmentos garbage, ver commit `6b8e1d7`) — no son bugs nuevos de los splitters.
+- `splitExpressions(text)` — expresiones `/ FRASE. cuerpo`; escáner con seguimiento de profundidad de `()`/`[]` (no corta en puntos dentro de paréntesis) y reconoce el prefijo abreviado de 1-4 mayúsculas del lema repetido (`A. DEL ESTADO.`, `CH. CRUZADO.`) como parte de la frase, no como su fin
+- Tests para cada splitter, basados en fragmentos reales del corpus (26 tests, todos verdes)
+- Escaneo del corpus completo (37,792 entradas): 9,753 con múltiples acepciones, 3,330 con subacepciones, 7,339 con catálogo, 4,617 expresiones (0 crashes vía `buildEntry`). Limitación conocida y aceptada: ~0.3% de frases de expresión mal cortadas por ruido OCR que el escáner no puede resolver (frases terminadas en `!` en vez de `.`, `l.` OCR de `I.`, puntos dobles) — mismo tipo de heurística imperfecta que la de antónimos.
 
-### Task 4 — `buildEntry()` pipeline (pendiente)
-- Componer extractores + splitters
-- Generar estructura anidada: `{ senses: [{ number, definition, examples, synonyms, subsenses: [...], catalog: [...], crossReferences: [...] }] }`
-- Tests de integración
+### Task 4 — `buildEntry()` pipeline ✅ (hecho en `parser-acepciones`)
+- Compone `splitExpressions` → `splitNumberedSenses` → `splitSubsenses` → `splitCatalog` → extractores hoja (ejemplos, sinónimos, referencias cruzadas, antónimo)
+- Estructura anidada: `{ senses: [{ number, definition, examples, synonyms, crossReferences, antonym, subsenses, catalog }], expressions: [{ phrase, senses }] }`
+- Tests de integración con fragmentos reales (6 tests) + escaneo del corpus completo: 0 crashes, 54,340 acepciones, 4,617 expresiones generadas
 
 ### Task 5 — Escritor SQLite (pendiente)
 - Tablas: `entries`, `senses`, `subsenses`, `examples`, `catalog_items`, `synonyms`, `antonyms`, `cross_references`, `expressions`
