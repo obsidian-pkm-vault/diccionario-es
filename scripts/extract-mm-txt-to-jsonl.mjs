@@ -14,6 +14,7 @@ const CONNECTOR_GAP_REGEX = /^\s*(?:y|o|u|e|,)??\s*$/iu;
 const HEADER_MARKER_REGEX = /\s+(?:\d+\s+)?(?:\([^)]*\)\s+)*(?:Part\.|adj\.|adv\.|m\.|f\.|n\.|tr\.|intr\.|prnl\.|prep\.|conj\.|interj\.|abs\.|aux\.|pl\.|sing\.|pron\.|art\.)/iu;
 const PAGE_NUMBER_LINE_REGEX = /^\s*\d{1,4}\s*$/u;
 const SCAN_NOISE_LINE_REGEX = /^[^\p{Ll}\d]{1,12}$/u;
+const DISQUALIFYING_PREFIX_REGEX = /[:"'“”‘’ʻ=©]/u;
 
 function parseArgs(argv) {
   const options = {
@@ -185,7 +186,7 @@ function joinLookaheadWindow(lines, startIndex, maxLines = 5) {
   return collected.join(' ');
 }
 
-function looksLikeEntryStart(lines, startIndex) {
+export function looksLikeEntryStart(lines, startIndex) {
   const window = joinLookaheadWindow(lines, startIndex).trim();
 
   if (!/^\p{Ll}/u.test(window)) {
@@ -193,7 +194,9 @@ function looksLikeEntryStart(lines, startIndex) {
   }
 
   const scanWindow = window.slice(0, 220);
-  return [...scanWindow.matchAll(TYPE_REGEX)].length > 0;
+  const matches = [...scanWindow.matchAll(TYPE_REGEX)];
+
+  return matches.some((match) => !DISQUALIFYING_PREFIX_REGEX.test(scanWindow.slice(0, match.index)));
 }
 
 function cleanLemmaPrefix(prefix) {

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { splitIntoBlocks } from './extract-mm-txt-to-jsonl.mjs';
+import { splitIntoBlocks, looksLikeEntryStart } from './extract-mm-txt-to-jsonl.mjs';
 
 test('splitIntoBlocks merges an entry that spans a bare page-number line', () => {
   const lines = [
@@ -143,4 +143,22 @@ test('splitIntoBlocks skips a stray scan-noise line and still separates the real
     'actividad («En, Dedicar, Desarrollar») ',
     'f. Estado de lo que se mueve o actua.',
   ]);
+});
+
+test('looksLikeEntryStart accepts a genuine entry whose type marker follows only a lemma and a usage-note parenthetical', () => {
+  const lines = [
+    'ánimo 1 («Impresionar, Influir en, Elevar, Levantar, ',
+    'Esparcir, Explayar, Abatir, Deprimir») m. Facultad de ',
+    'sentir y obrar.',
+  ];
+  assert.equal(looksLikeEntryStart(lines, 0), true);
+});
+
+test('looksLikeEntryStart rejects a coincidental type-marker match inside a quoted example', () => {
+  const lines = [
+    'un sitio: "Echar una carta al buzón". O («a, en, por, ',
+    'sobre») Impulsar una *cosa hacia un sitio de cualquier ',
+    'modo.',
+  ];
+  assert.equal(looksLikeEntryStart(lines, 0), false);
 });
