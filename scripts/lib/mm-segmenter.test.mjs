@@ -183,6 +183,42 @@ test('splitExpressions handles a mixed-case OCR phrase', () => {
   });
 });
 
+test('splitExpressions keeps a single-letter abbreviation prefix inside the phrase', () => {
+  const result = splitExpressions(
+    '/ A. DEL EstaDo. Abogado al servicio del Estado para defender sus derechos en juicio.',
+  );
+  assert.deepEqual(result.expressions, [
+    {
+      phrase: 'A. DEL EstaDo',
+      text: 'Abogado al servicio del Estado para defender sus derechos en juicio.',
+    },
+  ]);
+});
+
+test('splitExpressions does not treat a period inside parentheses as the phrase terminator', () => {
+  const result = splitExpressions(
+    '/ A. DE GANCHO (Arg., Bol., Chi., Col., Salv., Guat., Ur.). Imperdible.',
+  );
+  assert.deepEqual(result.expressions, [
+    {
+      phrase: 'A. DE GANCHO (Arg., Bol., Chi., Col., Salv., Guat., Ur.)',
+      text: 'Imperdible.',
+    },
+  ]);
+});
+
+test('splitExpressions keeps a multi-letter abbreviation prefix inside the phrase', () => {
+  const result = splitExpressions(
+    '/ CH. CRUZADO. Cheque en cuyo anverso escribe el expedidor el nombre de un banco.',
+  );
+  assert.deepEqual(result.expressions, [
+    {
+      phrase: 'CH. CRUZADO',
+      text: 'Cheque en cuyo anverso escribe el expedidor el nombre de un banco.',
+    },
+  ]);
+});
+
 test('splitExpressions collects multiple expressions in order', () => {
   const result = splitExpressions('Prefacio. / AL ABRIGO DE. Protegido. / DE ABRIGO. Fuerte.');
   assert.deepEqual(result, {

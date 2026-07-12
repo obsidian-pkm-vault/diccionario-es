@@ -93,19 +93,41 @@ export function splitCatalog(text) {
   return { text: main, catalog };
 }
 
-const EXPRESSION_MARKER_REGEX = /\/\s+([^.]+?)\.\s+/gu;
+const EXPRESSION_START_REGEX = /\/\s+/gu;
+const ABBREVIATED_PHRASE_PREFIX_REGEX = /^\p{Lu}{1,4}\.\s+/u;
+
+function findPhraseEnd(segment) {
+  const prefixMatch = segment.match(ABBREVIATED_PHRASE_PREFIX_REGEX);
+  let depth = 0;
+
+  for (let i = prefixMatch ? prefixMatch[0].length : 0; i < segment.length; i += 1) {
+    const char = segment[i];
+    if (char === '(' || char === '[') {
+      depth += 1;
+    } else if (char === ')' || char === ']') {
+      depth = Math.max(0, depth - 1);
+    } else if (char === '.' && depth === 0) {
+      let bodyStart = i + 1;
+      while (bodyStart < segment.length && /\s/u.test(segment[bodyStart])) bodyStart += 1;
+      return { phrase: segment.slice(0, i).trim(), bodyStart };
+    }
+  }
+
+  return { phrase: segment.trim(), bodyStart: segment.length };
+}
 
 export function splitExpressions(text) {
-  const matches = [...text.matchAll(EXPRESSION_MARKER_REGEX)];
-  if (matches.length === 0) {
+  const starts = [...text.matchAll(EXPRESSION_START_REGEX)].map((match) => match.index);
+  if (starts.length === 0) {
     return { text: text.trim(), expressions: [] };
   }
 
-  const mainText = text.slice(0, matches[0].index).trim();
-  const expressions = matches.map((match, i) => {
-    const bodyStart = match.index + match[0].length;
-    const bodyEnd = i + 1 < matches.length ? matches[i + 1].index : text.length;
-    return { phrase: match[1].trim(), text: text.slice(bodyStart, bodyEnd).trim() };
+  const mainText = text.slice(0, starts[0]).trim();
+  const expressions = starts.map((start, i) => {
+    const segmentEnd = i + 1 < starts.length ? starts[i + 1] : text.length;
+    const segment = text.slice(start, segmentEnd).replace(/^\/\s+/u, '');
+    const { phrase, bodyStart } = findPhraseEnd(segment);
+    return { phrase, text: segment.slice(bodyStart).trim() };
   });
 
   return { text: mainText, expressions };
