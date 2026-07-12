@@ -1336,6 +1336,188 @@ git commit -m "chore: mark María Moliner parser steps done"
 
 ---
 
+### Task 8: Fix entry-start detection blind spots (page-break peek hardening)
+
+> **Dispatch order note:** despite its number, this task must run **immediately after Task 1 and before Task 2** — it patches the same `splitIntoBlocks`/`looksLikeEntryStart` code Task 1 touched and regenerates the same `data/diccionario-maria-moliner.jsonl` that Tasks 2–7 build on. It is numbered last only so it didn't collide with the plan's existing `Task 1`–`Task 7` headings when appended after Task 1 was already implemented and reviewed.
+
+**Why:** Task 1's review turned up a genuine, pre-existing data-loss bug — not caused by Task 1's own fix, but exposed while investigating a discrepancy Task 1's fix surfaced. `looksLikeEntryStart` only inspects a single physical line when deciding whether content after a page break is a new entry. Two real failure patterns follow from that:
+
+1. **Misfiled entries:** when a real entry's grammatical type marker (`f.`, `m.`, `tr.`, …) falls on the line *after* its lemma/header line — common when the header line is long (e.g. carries a parenthetical usage note) — `looksLikeEntryStart` checks only the first line, finds no marker, wrongly concludes "not a new entry," and bridges the page break onto the *previous* entry instead of starting fresh. The real entry's text becomes an unsearchable tail of an unrelated neighbor. Confirmed on real corpus lemmas: `ánimo`, `brasier`, `carcoma`, `desorientado, -a`, `enfermo, -a`, `engaño`, `gana`, `gravamen`, `grito`, `torpedo`.
+2. **Vanished entries:** occasionally a stray non-blank, non-digit scan-noise line (e.g. `AA`, `-— —-` — OCR/print artifacts with no lowercase letters) sits between the blank-line runs around a page break. It isn't a page number, so it's treated as real content and starts a bogus block; the genuine entry that follows then gets bridged onto *that* artifact line (same single-line lookahead weakness as above); `parseBlock`'s lowercase-first-character validation then rejects the whole merged block, silently dropping both the artifact and the real entry it swallowed. Confirmed on real corpus lemmas: `actividad`, `pamue`.
+
+**Explicitly out of scope:** a third, unrelated pre-existing issue where very long multi-sense entries (e.g. `pasar`) lose most of their senses across *multiple* internal page breaks — that needs a fundamentally different merge strategy (folding in possibly-many page breaks with real intervening acepción numbers) and is not a lookahead-window problem. Do not attempt it here; it needs its own dedicated investigation.
+
+**Files:**
+- Modify: `scripts/extract-mm-txt-to-jsonl.mjs`
+- Modify: `scripts/extract-mm-txt-to-jsonl.test.mjs`
+- Regenerate: `data/diccionario-maria-moliner.jsonl`
+
+**Interfaces:**
+- Changes: `looksLikeEntryStart` signature changes from `(line: string): boolean` to `(lines: string[], startIndex: number): boolean` — it now joins a short lookahead window of upcoming lines (stopping at the next blank line, capped at 5 lines) before testing, instead of testing only `lines[startIndex]`. Update its one call site inside `splitIntoBlocks` accordingly.
+- `splitIntoBlocks(lines, startLine)`'s external signature and return shape are unchanged.
+
+- [ ] **Step 1: Write the failing tests**
+
+Append to `scripts/extract-mm-txt-to-jsonl.test.mjs`:
+
+```js
+test('splitIntoBlocks does not bridge a page break onto an entry whose type marker is on its second line', () => {
+  const lines = [
+    'animizar tr. Dar animo, alentar.',
+    '',
+    '',
+    '500',
+    '',
+    '',
+    'animo («Con, Dar, Levantar, Perder, Tener») ',
+    'm. Energia para hacer algo o afrontar una dificultad.',
+  ];
+  const blocks = splitIntoBlocks(lines, 1);
+  assert.equal(blocks.length, 2);
+  assert.deepEqual(blocks[0].lines, ['animizar tr. Dar animo, alentar.']);
+  assert.deepEqual(blocks[1].lines, [
+    'animo («Con, Dar, Levantar, Perder, Tener») ',
+    'm. Energia para hacer algo o afrontar una dificultad.',
+  ]);
+});
+
+test('splitIntoBlocks skips a stray scan-noise line and still separates the real entry that follows', () => {
+  const lines = [
+    'previo m. Palabra anterior en el texto.',
+    '',
+    '',
+    'AA',
+    '',
+    '',
+    '501',
+    '',
+    '',
+    'actividad («En, Dedicar, Desarrollar») ',
+    'f. Estado de lo que se mueve o actua.',
+  ];
+  const blocks = splitIntoBlocks(lines, 1);
+  assert.equal(blocks.length, 2);
+  assert.deepEqual(blocks[0].lines, ['previo m. Palabra anterior en el texto.']);
+  assert.deepEqual(blocks[1].lines, [
+    'actividad («En, Dedicar, Desarrollar») ',
+    'f. Estado de lo que se mueve o actua.',
+  ]);
+});
+```
+
+- [ ] **Step 2: Run tests to verify the new ones fail**
+
+Run: `node --test scripts/extract-mm-txt-to-jsonl.test.mjs`
+Expected: the 5 existing tests still pass; the 2 new tests FAIL (the misfiled-neighbor one asserts 2 blocks but gets 1; the scan-noise one either throws or asserts 2 blocks but gets a wrong split, since `AA` currently gets treated as content).
+
+- [ ] **Step 3: Apply the fix**
+
+In `scripts/extract-mm-txt-to-jsonl.mjs`:
+
+1. Add a new constant next to `PAGE_NUMBER_LINE_REGEX`:
+
+```js
+const SCAN_NOISE_LINE_REGEX = /^[^\p{Ll}\d]{1,12}$/u;
+```
+
+2. Replace the existing `looksLikeEntryStart` function with:
+
+```js
+function joinLookaheadWindow(lines, startIndex, maxLines = 5) {
+  const collected = [];
+
+  for (let i = startIndex; i < lines.length && collected.length < maxLines; i += 1) {
+    if (lines[i].trim() === '') break;
+    collected.push(lines[i]);
+  }
+
+  return collected.join(' ');
+}
+
+function looksLikeEntryStart(lines, startIndex) {
+  const window = joinLookaheadWindow(lines, startIndex).trim();
+
+  if (!/^\p{Ll}/u.test(window)) {
+    return false;
+  }
+
+  const scanWindow = window.slice(0, 220);
+  return [...scanWindow.matchAll(TYPE_REGEX)].length > 0;
+}
+```
+
+3. In `splitIntoBlocks`, update the top-level unconditional skip check (the one currently reading `if (line.trim() !== '' && PAGE_NUMBER_LINE_REGEX.test(line))`) to also match scan-noise lines:
+
+```js
+    if (line.trim() !== '' && (PAGE_NUMBER_LINE_REGEX.test(line) || SCAN_NOISE_LINE_REGEX.test(line))) {
+      offset += 1;
+      continue;
+    }
+```
+
+4. In the blank-line peek loop (the `while (peek < lines.length) { ... }` loop Task 1 added), update the candidate check to treat scan-noise lines the same as page-number lines, and update the two call sites of `looksLikeEntryStart` accordingly. Replace the loop body with:
+
+```js
+        let peek = offset + 1;
+        let sawNoise = false;
+
+        while (peek < lines.length) {
+          while (peek < lines.length && lines[peek].trim() === '') {
+            peek += 1;
+          }
+
+          const candidate = peek < lines.length ? lines[peek].trim() : '';
+
+          if (candidate && (PAGE_NUMBER_LINE_REGEX.test(candidate) || SCAN_NOISE_LINE_REGEX.test(candidate))) {
+            sawNoise = true;
+            peek += 1;
+            continue;
+          }
+
+          break;
+        }
+
+        const nextContentLine = peek < lines.length ? lines[peek] : '';
+
+        if (sawNoise && nextContentLine && !looksLikeEntryStart(lines, peek)) {
+          offset = peek;
+          continue;
+        }
+```
+
+(Rename `sawPageNumber` to `sawNoise` throughout this block — same variable, clearer name now that it also covers scan-noise lines. Everything else in `splitIntoBlocks` — the appendix-marker check, the final block-push, the rest of the loop — is unchanged.)
+
+- [ ] **Step 4: Run tests to verify they pass**
+
+Run: `node --test scripts/extract-mm-txt-to-jsonl.test.mjs`
+Expected: PASS (7/7 tests — the original 5 plus these 2 new ones)
+
+- [ ] **Step 5: Regenerate the real data and verify the specific known-bad lemmas are fixed**
+
+Run: `node scripts/extract-mm-txt-to-jsonl.mjs`, then check that `ánimo`, `actividad`, and `pamue` are now present as their own entries (not absent, not merged into a neighbor):
+
+```bash
+node -e "
+const fs = require('fs');
+const lines = fs.readFileSync('data/diccionario-maria-moliner.jsonl','utf8').split('\n').filter(Boolean);
+const ids = new Set(lines.map((l) => JSON.parse(l).id));
+for (const id of ['animo', 'actividad', 'pamue']) {
+  console.log(id, ids.has(id) ? 'PRESENT' : 'MISSING');
+}
+"
+```
+
+Expected: all three print `PRESENT`. Also print the new total entry count and compare it to 37718 (Task 1's post-fix count) — report the new number and a brief sanity note (it should be close to 37718, likely a little higher since previously-misfiled/vanished entries now surface as their own entries; it is **not** expected to reach exactly 37792, since ~64 of the original 74-entry gap was correct orphan-fragment cleanup that this task does not undo).
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add scripts/extract-mm-txt-to-jsonl.mjs scripts/extract-mm-txt-to-jsonl.test.mjs data/diccionario-maria-moliner.jsonl
+git commit -m "fix(extract): widen entry-start lookahead, skip scan-noise lines around page breaks"
+```
+
+---
+
 ## Self-Review
 
 **Spec coverage:** Marker table (Task 2/3), page-break bug (Task 1), schema (Task 4), storage (Task 5), files/CLI (Task 6), validation (Task 7) — every spec section has a task. `campoSemantico`/enrichment are explicitly out of scope per spec and untouched here.
