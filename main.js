@@ -114,19 +114,19 @@ function renderExpressions(expressions) {
 function renderEnrichment(enrichment) {
     if (!enrichment) return '';
     const rows = [
-        ['Etimología', enrichment.etimologia?.join(', ')],
-        ['Categoría', enrichment.catGram?.join(', ')],
-        ['Área de uso', enrichment.areaUso?.join(', ')],
-        ['Nivel de uso', enrichment.nivelUso?.join(', ')],
-        ['Nombre científico', enrichment.nombreCientifico],
-        ['Conjugación', enrichment.conjugacion],
-        ['Sinónimos (Lucene)', enrichment.sinonimos?.length ? enrichment.sinonimos.join(', ') : null],
+        ['Etimología', enrichment.etymology?.join(', ')],
+        ['Categoría', enrichment.partOfSpeech?.join(', ')],
+        ['Área de uso', enrichment.usageArea?.join(', ')],
+        ['Nivel de uso', enrichment.usageLevel?.join(', ')],
+        ['Nombre científico', enrichment.scientificName],
+        ['Conjugación', enrichment.conjugation],
+        ['Sinónimos (Lucene)', enrichment.synonymsLucene?.length ? enrichment.synonymsLucene.join(', ') : null],
     ].filter(([, value]) => value);
 
-    if (rows.length === 0 && !enrichment.notasUso) return '';
+    if (rows.length === 0 && !enrichment.usageNotes) return '';
 
     const rowsHtml = rows.map(([label, value]) => `<p><strong>${label}:</strong> ${escapeHtml(value)}</p>`).join('');
-    const notas = enrichment.notasUso ? `<p class="notas-uso">${escapeHtml(enrichment.notasUso)}</p>` : '';
+    const notas = enrichment.usageNotes ? `<p class="notas-uso">${escapeHtml(enrichment.usageNotes)}</p>` : '';
     return `<div class="enrichment">${rowsHtml}${notas}</div>`;
 }
 

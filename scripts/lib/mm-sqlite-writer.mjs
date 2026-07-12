@@ -10,18 +10,18 @@ export function createSchema(db) {
       source TEXT,
       start_line INTEGER,
       end_line INTEGER,
-      etimologia TEXT,
-      area_uso TEXT,
-      nivel_uso TEXT,
-      cat_gram TEXT,
-      nombre_cientifico TEXT,
-      conjugacion TEXT,
-      notas_uso TEXT,
-      voz TEXT,
-      anagrama TEXT,
-      antiguo INTEGER,
-      desuso INTEGER,
-      sinonimos_lucene TEXT
+      etymology TEXT,
+      usage_area TEXT,
+      usage_level TEXT,
+      part_of_speech TEXT,
+      scientific_name TEXT,
+      conjugation TEXT,
+      usage_notes TEXT,
+      headword TEXT,
+      anagram TEXT,
+      archaic INTEGER,
+      obsolete INTEGER,
+      synonyms_lucene TEXT
     );
 
     CREATE INDEX IF NOT EXISTS idx_entries_source_id ON entries(source_id);
@@ -89,8 +89,8 @@ export function createWriter(db) {
     entry: db.prepare(
       `INSERT INTO entries (
         source_id, lemma, types, initial_meta, header, source, start_line, end_line,
-        etimologia, area_uso, nivel_uso, cat_gram, nombre_cientifico, conjugacion,
-        notas_uso, voz, anagrama, antiguo, desuso, sinonimos_lucene
+        etymology, usage_area, usage_level, part_of_speech, scientific_name, conjugation,
+        usage_notes, headword, anagram, archaic, obsolete, synonyms_lucene
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ),
     expression: db.prepare('INSERT INTO expressions (entry_id, phrase) VALUES (?, ?)'),
@@ -135,18 +135,18 @@ export function createWriter(db) {
       record.source ?? '',
       record.startLine ?? null,
       record.endLine ?? null,
-      enrichment?.etimologia ? JSON.stringify(enrichment.etimologia) : null,
-      enrichment?.areaUso ? JSON.stringify(enrichment.areaUso) : null,
-      enrichment?.nivelUso ? JSON.stringify(enrichment.nivelUso) : null,
-      enrichment?.catGram ? JSON.stringify(enrichment.catGram) : null,
-      enrichment?.nombreCientifico ?? null,
-      enrichment?.conjugacion ?? null,
-      enrichment?.notasUso ?? null,
-      enrichment?.voz ?? null,
-      enrichment?.anagrama ?? null,
-      enrichment ? Number(enrichment.antiguo) : null,
-      enrichment ? Number(enrichment.desuso) : null,
-      enrichment?.sinonimos ? JSON.stringify(enrichment.sinonimos) : null,
+      enrichment?.etymology ? JSON.stringify(enrichment.etymology) : null,
+      enrichment?.usageArea ? JSON.stringify(enrichment.usageArea) : null,
+      enrichment?.usageLevel ? JSON.stringify(enrichment.usageLevel) : null,
+      enrichment?.partOfSpeech ? JSON.stringify(enrichment.partOfSpeech) : null,
+      enrichment?.scientificName ?? null,
+      enrichment?.conjugation ?? null,
+      enrichment?.usageNotes ?? null,
+      enrichment?.headword ?? null,
+      enrichment?.anagram ?? null,
+      enrichment ? Number(enrichment.archaic) : null,
+      enrichment ? Number(enrichment.obsolete) : null,
+      enrichment?.synonyms ? JSON.stringify(enrichment.synonyms) : null,
     );
     const entryId = Number(entryInfo.lastInsertRowid);
 

@@ -58,7 +58,7 @@ export function getEntryDetail(db, entryId) {
   const entry = db.prepare('SELECT * FROM entries WHERE id = ?').get(entryId);
   if (!entry) return null;
 
-  const hasEnrichment = entry.etimologia !== null;
+  const hasEnrichment = entry.etymology !== null;
 
   return {
     lemma: entry.lemma,
@@ -70,18 +70,18 @@ export function getEntryDetail(db, entryId) {
     expressions: getExpressions(db, entryId),
     enrichment: hasEnrichment
       ? {
-          etimologia: parseJsonArray(entry.etimologia),
-          areaUso: parseJsonArray(entry.area_uso),
-          nivelUso: parseJsonArray(entry.nivel_uso),
-          catGram: parseJsonArray(entry.cat_gram),
-          nombreCientifico: entry.nombre_cientifico,
-          conjugacion: entry.conjugacion,
-          notasUso: entry.notas_uso,
-          voz: entry.voz,
-          anagrama: entry.anagrama,
-          antiguo: Boolean(entry.antiguo),
-          desuso: Boolean(entry.desuso),
-          sinonimos: parseJsonArray(entry.sinonimos_lucene),
+          etymology: parseJsonArray(entry.etymology),
+          usageArea: parseJsonArray(entry.usage_area),
+          usageLevel: parseJsonArray(entry.usage_level),
+          partOfSpeech: parseJsonArray(entry.part_of_speech),
+          scientificName: entry.scientific_name,
+          conjugation: entry.conjugation,
+          usageNotes: entry.usage_notes,
+          headword: entry.headword,
+          anagram: entry.anagram,
+          archaic: Boolean(entry.archaic),
+          obsolete: Boolean(entry.obsolete),
+          synonymsLucene: parseJsonArray(entry.synonyms_lucene),
         }
       : null,
   };

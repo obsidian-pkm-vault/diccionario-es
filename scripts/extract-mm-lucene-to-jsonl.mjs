@@ -11,9 +11,18 @@ const DEFAULT_INPUT = path.resolve('data/Diccionario_Maria_Moliner_3a_ed/Setup/i
 const DEFAULT_OUTPUT = path.resolve('data/diccionario-maria-moliner-lucene.jsonl');
 
 const AT_SENTINEL_REGEX = /^@\s*/u;
-const PIPE_LIST_FIELDS = ['etimologia', 'areaUso', 'nivelUso', 'catGram'];
-const BOOLEAN_FIELDS = ['antiguo', 'desuso'];
-const FREE_TEXT_FIELDS = ['nombreCientifico', 'conjugacion', 'notasUso', 'voz', 'anagrama'];
+
+// Maps each Lucene source field (fixed - baked into the index's .fnm schema) to
+// the English output field name used throughout the rest of the pipeline.
+const PIPE_LIST_FIELDS = { etimologia: 'etymology', areaUso: 'usageArea', nivelUso: 'usageLevel', catGram: 'partOfSpeech' };
+const BOOLEAN_FIELDS = { antiguo: 'archaic', desuso: 'obsolete' };
+const FREE_TEXT_FIELDS = {
+  nombreCientifico: 'scientificName',
+  conjugacion: 'conjugation',
+  notasUso: 'usageNotes',
+  voz: 'headword',
+  anagrama: 'anagram',
+};
 
 function parseArgs(argv) {
   return parseCliArgs(
@@ -54,19 +63,19 @@ export function normalizeLuceneRecord(doc) {
     source: 'lucene-todo-index',
   };
 
-  for (const field of PIPE_LIST_FIELDS) {
-    record[field] = doc[field] ? parsePipeList(doc[field]) : [];
+  for (const [sourceField, outputField] of Object.entries(PIPE_LIST_FIELDS)) {
+    record[outputField] = doc[sourceField] ? parsePipeList(doc[sourceField]) : [];
   }
 
-  for (const field of BOOLEAN_FIELDS) {
-    record[field] = Boolean(doc[field]);
+  for (const [sourceField, outputField] of Object.entries(BOOLEAN_FIELDS)) {
+    record[outputField] = Boolean(doc[sourceField]);
   }
 
-  for (const field of FREE_TEXT_FIELDS) {
-    record[field] = doc[field] ? stripSentinel(doc[field]) : null;
+  for (const [sourceField, outputField] of Object.entries(FREE_TEXT_FIELDS)) {
+    record[outputField] = doc[sourceField] ? stripSentinel(doc[sourceField]) : null;
   }
 
-  record.sinonimos = doc.sinonimos
+  record.synonyms = doc.sinonimos
     ? stripSentinel(doc.sinonimos).split(/\s+/u).filter(Boolean)
     : [];
 

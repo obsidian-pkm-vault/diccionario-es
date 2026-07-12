@@ -50,18 +50,18 @@ export function toJsonlRecord(record, built, enrichment = null) {
   };
 
   if (enrichment) {
-    jsonlRecord.etimologia = enrichment.etimologia;
-    jsonlRecord.areaUso = enrichment.areaUso;
-    jsonlRecord.nivelUso = enrichment.nivelUso;
-    jsonlRecord.catGram = enrichment.catGram;
-    jsonlRecord.nombreCientifico = enrichment.nombreCientifico;
-    jsonlRecord.conjugacion = enrichment.conjugacion;
-    jsonlRecord.notasUso = enrichment.notasUso;
-    jsonlRecord.voz = enrichment.voz;
-    jsonlRecord.anagrama = enrichment.anagrama;
-    jsonlRecord.antiguo = enrichment.antiguo;
-    jsonlRecord.desuso = enrichment.desuso;
-    jsonlRecord.sinonimosLucene = enrichment.sinonimos;
+    jsonlRecord.etymology = enrichment.etymology;
+    jsonlRecord.usageArea = enrichment.usageArea;
+    jsonlRecord.usageLevel = enrichment.usageLevel;
+    jsonlRecord.partOfSpeech = enrichment.partOfSpeech;
+    jsonlRecord.scientificName = enrichment.scientificName;
+    jsonlRecord.conjugation = enrichment.conjugation;
+    jsonlRecord.usageNotes = enrichment.usageNotes;
+    jsonlRecord.headword = enrichment.headword;
+    jsonlRecord.anagram = enrichment.anagram;
+    jsonlRecord.archaic = enrichment.archaic;
+    jsonlRecord.obsolete = enrichment.obsolete;
+    jsonlRecord.synonymsLucene = enrichment.synonyms;
   }
 
   return jsonlRecord;
