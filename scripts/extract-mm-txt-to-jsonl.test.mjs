@@ -43,3 +43,46 @@ test('splitIntoBlocks still splits on an ordinary blank-line paragraph break', (
   const blocks = splitIntoBlocks(lines, 1);
   assert.equal(blocks.length, 2);
 });
+
+test('splitIntoBlocks bridges two consecutive page-number lines with no blank between them', () => {
+  const lines = [
+    'ir. 1 intr. Moverse hacia un sitio que se expresa: veces no',
+    'se expresa el lugar ni la direccion.',
+    '',
+    '',
+    '787',
+    '788',
+    '',
+    '',
+    'sino alguna circunstancia del movimiento.',
+  ];
+  const blocks = splitIntoBlocks(lines, 1);
+  assert.equal(blocks.length, 1);
+  assert.deepEqual(blocks[0].lines, [
+    'ir. 1 intr. Moverse hacia un sitio que se expresa: veces no',
+    'se expresa el lugar ni la direccion.',
+    'sino alguna circunstancia del movimiento.',
+  ]);
+});
+
+test('splitIntoBlocks bridges two consecutive page-number lines separated by a blank', () => {
+  const lines = [
+    'ir. 1 intr. Moverse hacia un sitio que se expresa: veces no',
+    'se expresa el lugar ni la direccion.',
+    '',
+    '',
+    '787',
+    '',
+    '788',
+    '',
+    '',
+    'sino alguna circunstancia del movimiento.',
+  ];
+  const blocks = splitIntoBlocks(lines, 1);
+  assert.equal(blocks.length, 1);
+  assert.deepEqual(blocks[0].lines, [
+    'ir. 1 intr. Moverse hacia un sitio que se expresa: veces no',
+    'se expresa el lugar ni la direccion.',
+    'sino alguna circunstancia del movimiento.',
+  ]);
+});

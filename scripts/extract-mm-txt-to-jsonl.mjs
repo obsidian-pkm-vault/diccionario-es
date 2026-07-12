@@ -77,20 +77,20 @@ export function splitIntoBlocks(lines, startLine) {
     if (line.trim() === '') {
       if (currentLines.length > 0) {
         let peek = offset + 1;
-
-        while (peek < lines.length && lines[peek].trim() === '') {
-          peek += 1;
-        }
-
         let sawPageNumber = false;
 
-        if (peek < lines.length && lines[peek].trim() !== '' && PAGE_NUMBER_LINE_REGEX.test(lines[peek])) {
-          sawPageNumber = true;
-          peek += 1;
-
+        while (peek < lines.length) {
           while (peek < lines.length && lines[peek].trim() === '') {
             peek += 1;
           }
+
+          if (peek < lines.length && lines[peek].trim() !== '' && PAGE_NUMBER_LINE_REGEX.test(lines[peek])) {
+            sawPageNumber = true;
+            peek += 1;
+            continue;
+          }
+
+          break;
         }
 
         const nextContentLine = peek < lines.length ? lines[peek] : '';
