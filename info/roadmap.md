@@ -104,7 +104,7 @@ Extraer del texto plano todo lo que se pueda con regex. Ya implementado:
 - [x] Splitters estructurales: acepciones numeradas, subacepciones (`©`), catálogo (`O `), expresiones (`/`)
 - [x] `buildEntry()` — pipeline que compone extractores + splitters
 - [x] Escritor SQLite normalizado (`node:sqlite`)
-- [ ] Orquestador CLI (`scripts/parse-mm-definitions.mjs`)
+- [x] Orquestador CLI (`scripts/parse-mm-definitions.mjs`)
 - [ ] Validación manual (~20 lemas)
 
 ### Fase 2 — Parsear Lucene (si se necesita más precisión)
@@ -163,10 +163,12 @@ Estrategia propuesta: buscar librería Node.js que lea Lucene índices, o implem
 - Verificado contra el corpus completo: 0 crashes, 37,792 entradas, 59,331 acepciones (incluye las de expresiones), 4,039 subacepciones, 13,167 ejemplos, 9,920 sinónimos, 10,473 ítems de catálogo, 4,617 expresiones, ~760ms
 - De paso se corrigió un bug de Task 4: `buildEntry()` descartaba el catálogo embebido dentro de una subacepción (`© ... O ...`) — afectaba a ~19% de las subacepciones (740/3,970)
 
-### Task 6 — Orquestador CLI (pendiente)
-- `scripts/parse-mm-definitions.mjs`
-- Lee `data/diccionario-maria-moliner.jsonl`
-- Genera `data/diccionario-maria-moliner-v2.jsonl` y `data/diccionario-maria-moliner.sqlite`
+### Task 6 — Orquestador CLI ✅ (hecho en `parser-acepciones`)
+- `scripts/parse-mm-definitions.mjs` — mismo estilo de `parseArgs` que `extract-mm-txt-to-jsonl.mjs` (`--input`, `--output-jsonl`, `--output-sqlite`, `--limit`)
+- Lee `data/diccionario-maria-moliner.jsonl`, corre `buildEntry()` por entrada dentro de una única transacción SQLite
+- Genera `data/diccionario-maria-moliner-v2.jsonl` (campos originales + `senses`/`expressions`) y `data/diccionario-maria-moliner.sqlite`, ambos comprometidos al repo (igual que el v1 `.jsonl`)
+- **Nota:** este worktree tiene su propio `data/diccionario-maria-moliner.jsonl` regenerado con las mejoras del extractor de Task 1 (37,686 entradas), distinto del de `main` (37,792 entradas, sin esas mejoras) — los conteos de corpus registrados en Tasks 3-5 corrían contra el de `main` (ruta `../../data/...`); la corrida real de Task 6 (por defecto, sin `--input`) usó el de este branch. Ambas corridas dieron 0 crashes; los conteos no son comparables entrada-por-entrada pero ambas validan la lógica igual.
+- Corrida completa (branch-local): 0 crashes, ~1.2s, 37,686 entradas, 61,416 acepciones, 4,278 subacepciones, 14,417 ejemplos, 10,376 sinónimos, 11,016 ítems de catálogo, 5,730 expresiones
 
 ### Task 7 — Validación manual (pendiente)
 - Muestra de ~20 lemas contra el `.txt` original
