@@ -175,7 +175,7 @@ function collectAllHeaderTypes(text) {
   return [...window.matchAll(TYPE_REGEX)];
 }
 
-function joinLookaheadWindow(lines, startIndex, maxLines = 5) {
+export function joinLookaheadWindow(lines, startIndex, maxLines = 5) {
   const collected = [];
 
   for (let i = startIndex; i < lines.length && collected.length < maxLines; i += 1) {

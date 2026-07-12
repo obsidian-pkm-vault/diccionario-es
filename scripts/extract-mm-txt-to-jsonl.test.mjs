@@ -157,8 +157,10 @@ test('looksLikeEntryStart accepts a genuine entry whose type marker follows only
 test('looksLikeEntryStart rejects a coincidental type-marker match inside a quoted example', () => {
   const lines = [
     'un sitio: "Echar una carta al buzón". O («a, en, por, ',
-    'sobre») Impulsar una *cosa hacia un sitio de cualquier ',
-    'modo.',
+    'sobre») Impulsar una cosa hacia un sitio de cualquier ',
+    'modo, le echo la pelota al delantero centro. © («a, ',
+    'hacia, para, hasta, contra) prnl. Moverse y dejar de estar ',
+    'en el sitio donde se estaba.',
   ];
   assert.equal(looksLikeEntryStart(lines, 0), false);
 });
