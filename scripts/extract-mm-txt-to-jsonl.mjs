@@ -5,7 +5,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { parseArgs as parseCliArgs, resolvePath, parseInteger } from './lib/cli-args.mjs';
 
-const DEFAULT_INPUT = path.resolve('data/diccionario-maria-moliner.txt');
+const DEFAULT_INPUT = path.resolve('data/book/diccionario-maria-moliner.txt');
 const DEFAULT_OUTPUT = path.resolve('data/diccionario-maria-moliner.jsonl');
 const DEFAULT_START_LINE = 1031;
 const APPENDIX_MARKER = /^AP(?:E|É)NDICE\b/u;
