@@ -105,7 +105,7 @@ Extraer del texto plano todo lo que se pueda con regex. Ya implementado:
 - [x] `buildEntry()` — pipeline que compone extractores + splitters
 - [x] Escritor SQLite normalizado (`node:sqlite`)
 - [x] Orquestador CLI (`scripts/parse-mm-definitions.mjs`)
-- [ ] Validación manual (~20 lemas)
+- [x] Validación manual (~20 lemas)
 
 ### Fase 2 — Parsear Lucene (si se necesita más precisión)
 Si los sinónimos extraídos del `.txt` no son suficientemente limpios, parsear el índice `todo/` para obtener `sinonimos`, `etimologia`, `areaUso`, `nivelUso`, `nombreCientifico`, `conjugacion`.
@@ -170,9 +170,12 @@ Estrategia propuesta: buscar librería Node.js que lea Lucene índices, o implem
 - **Nota:** este worktree tiene su propio `data/diccionario-maria-moliner.jsonl` regenerado con las mejoras del extractor de Task 1 (37,686 entradas), distinto del de `main` (37,792 entradas, sin esas mejoras) — los conteos de corpus registrados en Tasks 3-5 corrían contra el de `main` (ruta `../../data/...`); la corrida real de Task 6 (por defecto, sin `--input`) usó el de este branch. Ambas corridas dieron 0 crashes; los conteos no son comparables entrada-por-entrada pero ambas validan la lógica igual.
 - Corrida completa (branch-local): 0 crashes, ~1.2s, 37,686 entradas, 61,416 acepciones, 4,278 subacepciones, 14,417 ejemplos, 10,376 sinónimos, 11,016 ítems de catálogo, 5,730 expresiones
 
-### Task 7 — Validación manual (pendiente)
-- Muestra de ~20 lemas contra el `.txt` original
-- Registrar resultados
+### Task 7 — Validación manual ✅ (hecho en `parser-acepciones`)
+- Muestra de 20 lemas (14 elegidos por cobertura estructural + 6 al azar con espaciado uniforme) comparados a mano: texto original del `.txt` contra la salida de `buildEntry()`
+- **Resultado:** 15/20 correctos sin observaciones. 2 confirman limitaciones ya documentadas (`¡ArrIBA!` cortada en `!` en vez de `.`; `l.` OCR de `I.` en `inspección`). 3 revelaron problemas reales:
+  1. **[corregido]** `splitNumberedSenses` no reconocía como límite de acepción un número seguido de marca gramatical en minúscula (`5 n. Der...`, `2 m. Cosa absurda.`) — solo aceptaba mayúscula tras el número. Afectaba 2,467/37,686 entradas (6.5%). Arreglado en `ca56c73`, datos regenerados en `2c30b43`.
+  2. **[pendiente, decisión de diseño]** `detectAntonymRedirect()` (Task 2) resultó 0/8 aciertos reales en todo el corpus: los 8 casos con antónimo detectado son en realidad definiciones normales que empiezan con «Contrario a X» / «Opuesto a X» como prosa (p. ej. *antinuclear* = "Contrario a la energía nuclear", no una remisión a un antónimo). El patrón textual es indistinguible de una remisión real con regex simple; no se encontró ningún caso genuino de remisión en el corpus para contrastar. Requiere decidir: quitar el campo, o buscar otra señal.
+  3. **[pendiente, mayor riesgo]** Marcador de referencia cruzada `*palabra` a veces OCR'd como comilla curva suelta en vez de asterisco (visto en `bendecir`, `abandonar`). Como `extractExamples()` empareja comillas de forma tolerante a desajustes OCR (a propósito, para el caso normal), una comilla-asterisco suelta hace que trague prosa real como si fuera un ejemplo, corrompiendo la definición. Vive en código de Task 2 ya integrado; arreglarlo bien requiere repensar cómo `extractExamples` y `extractCrossReferencesAsterisk` distinguen los dos casos sin romper los tests existentes — no se tocó en esta sesión.
 
 ---
 
