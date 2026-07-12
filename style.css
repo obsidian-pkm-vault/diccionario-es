@@ -154,6 +154,12 @@ button:hover {
     text-align: center;
 }
 
+.db-status {
+    color: #999;
+    text-align: center;
+    font-size: 0.9em;
+}
+
 ol.senses {
     list-style: none;
     margin: 0;

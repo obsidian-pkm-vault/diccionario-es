@@ -179,7 +179,21 @@ Documentados también en `info/tasks.md`:
 - **Sinónimos Lucene fragmentados**: sin delimitador en la fuente, frases multi-palabra como "armar una bronca" quedan como 3 sinónimos sueltos. Dedup ya aplicado (Task 15); la fragmentación en sí es una limitación de los datos de origen, no del parser.
 - **~0.3% de expresiones cortadas mal por ruido OCR** (Task 3): `!` en vez de `.`, `l.` OCR'd de `I.`, puntos dobles.
 
-## Estado: Fase 1 y Fase 2 completas, mergeadas a `main`. Task 15 y 16 (correcciones de calidad) commiteadas. Fase 3 queda para el futuro (post-MVP, ver más abajo).
+#### Task 17 — Deploy estático en GitHub Pages ✅
+`server.mjs` requiere Node corriendo del lado del servidor (`node:sqlite`, consultas por request) — GitHub Pages solo sirve archivos estáticos, no ejecuta procesos. Se evaluaron dos opciones: (A) cargar la base entera en el navegador vía sql.js/WASM, o (B) pre-renderizar cada entrada a JSON estático + índice de búsqueda por prefijo. Medido antes de decidir: `data/diccionario-maria-moliner.sqlite` (30MB) comprime a 12MB con gzip -9 (soportado nativamente por el navegador vía `DecompressionStream`, sin dependencia extra) y a 8.1MB con brotli -11 (necesitaría una segunda dependencia WASM solo para descomprimir, no valió la pena por 4MB). Decisión del usuario: opción A + gzip — descarga única de 12MB (cacheada por el navegador después), en vez de refactorizar a archivos estáticos por entrada.
+
+Implementación:
+- **`package.json`** — primera dependencia npm del proyecto: `sql.js` (~700KB de WASM+JS, solo lado navegador; el pipeline de datos y `server.mjs` siguen sin dependencias).
+- **`render.js`** (nuevo) — funciones de render puras (`renderEntry`, `renderEnrichment`, etc.) extraídas de `main.js` para compartirse entre las dos variantes del frontend sin duplicar código.
+- **`browser-sqlite-reader.js`** (nuevo) — puerto de `scripts/lib/mm-sqlite-reader.mjs` a la API de sql.js (`prepare`/`bind`/`step`/`getAsObject` en vez de `node:sqlite`), mismo shape de salida para que `render.js` no necesite saber cuál de las dos lo generó.
+- **`main.js`** (local, server.mjs) y **`main.pages.js`** (estático, nuevo) — misma UI y wiring, difieren solo en la capa de datos: `fetch('/api/...')` vs. cargar+descomprimir+consultar la base client-side.
+- **`index.pages.html`** (nuevo) — variante estática de `index.html`: agrega el script de sql.js, un indicador de carga (`#dbStatus`, deshabilita el input hasta que la base termina de cargar/descomprimir), y usa `main.pages.js`/`browser-sqlite-reader.js`.
+- **`scripts/export-static-site.mjs`** (nuevo) — genera `dist/`: copia `index.pages.html`→`index.html`, `main.pages.js`→`main.js`, `render.js`, `browser-sqlite-reader.js`, `style.css`; vendoriza `sql-wasm.js`/`sql-wasm.wasm` desde `node_modules/sql.js/dist/`; gzipea el SQLite con `node:zlib` (built-in, sin dependencia extra para este paso).
+- **`.github/workflows/deploy-pages.yml`** (nuevo) — en cada push a `main`: `npm ci` → `node scripts/export-static-site.mjs` → `actions/upload-pages-artifact` → `actions/deploy-pages`. Requiere activar Pages una vez en Settings → Pages → Source: GitHub Actions (no se puede hacer desde git).
+- **Verificado localmente**: `node scripts/export-static-site.mjs` (31,137,792 → 12,180,089 bytes gzip, confirma la medición previa) servido con un servidor estático mínimo y probado con Chrome DevTools MCP: búsqueda (`abanto`), entrada con enriquecimiento completo (categoría/género/sinónimos, igual que la versión server-backed), entrada rica con subacepción+ejemplos+sinónimos por acepción (`ademán`, mismo caso de Task 13). 0 errores de consola (solo el 404 de favicon de siempre).
+- **Nota de exposición** (sin resolver, decisión del usuario pendiente): a diferencia de la versión local, esto publica el contenido completo del diccionario — comprimido pero íntegro — a cualquier visitante del sitio. La fuente tiene copyright ("uso personal, no venta" en `info/sources.md`). Documentado en el README; falta decidir si el repo/Pages quedan públicos.
+
+## Estado: Fase 1 y Fase 2 completas, mergeadas a `main`. Tasks 15-17 (correcciones de calidad + deploy estático) implementadas. Fase 3 queda para el futuro (post-MVP, ver más abajo).
 
 ### Fase 3 — Enriquecimiento externo (póst-MVP)
 - `semanticField` vía WordNet/ConceptNet/OMW

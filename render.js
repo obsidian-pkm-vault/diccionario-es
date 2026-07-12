@@ -1,0 +1,115 @@
+// Pure rendering functions shared by both entry points:
+// - main.js (local dev, server.mjs + node:sqlite)
+// - main.pages.js (static GitHub Pages build, sql.js in the browser)
+// Takes the same entry-detail JSON shape from either backend and turns it
+// into HTML strings. No fetching, no DOM wiring here.
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text ?? '';
+    return div.innerHTML;
+}
+
+function renderLeafExtras(leaf) {
+    let html = '';
+    if (leaf.examples?.length) {
+        html += `<ul class="examples">${leaf.examples.map((ex) => `<li>&ldquo;${escapeHtml(ex)}&rdquo;</li>`).join('')}</ul>`;
+    }
+    if (leaf.synonyms?.length) {
+        html += `<p class="tag-line"><strong>Sinónimos:</strong> ${leaf.synonyms.map(escapeHtml).join(', ')}</p>`;
+    }
+    if (leaf.crossReferences?.length) {
+        html += `<p class="tag-line"><strong>Véase también:</strong> ${leaf.crossReferences.map(escapeHtml).join(', ')}</p>`;
+    }
+    if (leaf.antonym) {
+        html += `<p class="tag-line"><strong>Antónimo:</strong> ${escapeHtml(leaf.antonym)}</p>`;
+    }
+    if (leaf.catalog?.length) {
+        html += `<ul class="catalog">${leaf.catalog.map((item) => `<li>${escapeHtml(item)}</li>`).join('')}</ul>`;
+    }
+    return html;
+}
+
+function renderSubsense(subsense) {
+    return `
+        <li class="subsense">
+            <p>${escapeHtml(subsense.definition)}</p>
+            ${renderLeafExtras(subsense)}
+        </li>
+    `;
+}
+
+function renderSense(sense) {
+    return `
+        <li class="sense">
+            <p><span class="sense-number">${sense.number}.</span> ${escapeHtml(sense.definition)}</p>
+            ${renderLeafExtras(sense)}
+            ${sense.subsenses?.length ? `<ul class="subsenses">${sense.subsenses.map(renderSubsense).join('')}</ul>` : ''}
+        </li>
+    `;
+}
+
+function renderExpressions(expressions) {
+    if (!expressions?.length) return '';
+    const items = expressions
+        .map(
+            (expression) => `
+                <div class="expression">
+                    <h3>${escapeHtml(expression.phrase)}</h3>
+                    <ol class="senses">${expression.senses.map(renderSense).join('')}</ol>
+                </div>
+            `,
+        )
+        .join('');
+    return `<div class="expressions"><h2>Expresiones</h2>${items}</div>`;
+}
+
+function renderEnrichment(enrichment) {
+    if (!enrichment) return '';
+    const groups = [
+        [
+            ['Categoría', enrichment.partOfSpeech?.join(', ')],
+            ['Género', enrichment.gender?.join(', ')],
+        ],
+        [
+            ['Área de uso', enrichment.usageArea?.join(', ')],
+            ['Nivel de uso', enrichment.usageLevel?.join(', ')],
+        ],
+        [['Etimología', enrichment.etymology?.join(', ')]],
+        [
+            ['Nombre científico', enrichment.scientificName],
+            ['Conjugación', enrichment.conjugation],
+            ['Sinónimos (Lucene)', enrichment.synonymsLucene?.length ? enrichment.synonymsLucene.join(', ') : null],
+        ],
+    ]
+        .map((rows) => rows.filter(([, value]) => value))
+        .filter((rows) => rows.length > 0);
+
+    if (groups.length === 0 && !enrichment.usageNotes) return '';
+
+    const groupsHtml = groups
+        .map(
+            (rows) =>
+                `<div class="enrichment-group">${rows.map(([label, value]) => `<p><strong>${label}:</strong> ${escapeHtml(value)}</p>`).join('')}</div>`,
+        )
+        .join('');
+    const notas = enrichment.usageNotes ? `<p class="notas-uso">${escapeHtml(enrichment.usageNotes)}</p>` : '';
+    return `<div class="enrichment">${groupsHtml}${notas}</div>`;
+}
+
+function renderEntry(entry) {
+    const types = Array.isArray(entry.types) ? entry.types.join(', ') : entry.types || '';
+    const typesHtml = types ? `<span class="word-types">${escapeHtml(types)}</span>` : '';
+
+    return `
+        <div class="word-result">
+            <div class="word-header">
+                <h1>${escapeHtml(entry.lemma)}</h1>
+                ${typesHtml}
+            </div>
+            <ol class="senses">${entry.senses.map(renderSense).join('')}</ol>
+            ${renderExpressions(entry.expressions)}
+            ${renderEnrichment(entry.enrichment)}
+        </div>
+    `;
+}

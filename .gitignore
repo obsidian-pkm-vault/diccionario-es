@@ -2,3 +2,5 @@ data/Diccionario_Maria_Moliner_3a_ed/
 data/book
 data/*.jsonl
 .worktrees/
+node_modules/
+dist/

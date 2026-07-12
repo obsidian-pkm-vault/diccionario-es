@@ -4,9 +4,9 @@ App local para consultar el *Diccionario de uso del español* de María Moliner.
 
 ## Requisitos
 
-- Node.js 22.5+ (usa `node:sqlite`, nativo desde esa versión — sin dependencias npm en todo el proyecto)
+- Node.js 22.5+ (usa `node:sqlite`, nativo desde esa versión — el pipeline de datos y el servidor local no tienen dependencias npm)
 
-## Uso
+## Uso local
 
 ```sh
 node server.mjs
@@ -14,15 +14,31 @@ node server.mjs
 
 Abre `http://localhost:3000`. El servidor sirve la app y consulta `data/diccionario-maria-moliner.sqlite` bajo demanda (la base tiene ~90k entradas; no se carga entera en el navegador).
 
+## Versión estática (GitHub Pages)
+
+`server.mjs` necesita Node corriendo del lado del servidor — GitHub Pages solo sirve archivos estáticos, así que hay una segunda variante del frontend que corre la base de datos entera en el navegador vía [sql.js](https://github.com/sql-js/sql.js) (SQLite compilado a WASM). Es la única dependencia npm del proyecto, y es solo del lado del navegador (el pipeline de datos sigue sin dependencias).
+
+```sh
+npm install
+node scripts/export-static-site.mjs
+```
+
+Genera `dist/` con: el HTML/JS de la variante estática (`index.pages.html` → `index.html`, `main.pages.js` → `main.js`), sql.js vendorizado, y `data/diccionario-maria-moliner.sqlite` comprimido con gzip (~30MB → ~12MB, se descarga una sola vez y el navegador lo cachea). `.github/workflows/deploy-pages.yml` corre este mismo script en cada push a `main` y publica `dist/` en GitHub Pages — requiere activar Pages una vez en Settings → Pages → Source: GitHub Actions.
+
+**Nota de exposición:** a diferencia de la versión local, la variante estática publica el contenido completo del diccionario (comprimido) a cualquier visitante público del sitio. La fuente original tiene copyright — confirmar que eso es aceptable antes de activar el deploy en un repo público.
+
 ## Estructura
 
 ```
-index.html, main.js, style.css   — frontend (búsqueda + panel de resultado)
-server.mjs                        — servidor local: estáticos + /api/search, /api/entry/:id
-scripts/lib/                      — lógica de parseo/lectura, reutilizable
-scripts/*.mjs                     — CLI para regenerar los datos
-data/                              — solo diccionario-maria-moliner.sqlite se commitea; el resto son fuentes con copyright (gitignored) o subproductos regenerables
-info/roadmap.md                   — plan detallado, decisiones de diseño, resultados de cada tarea
+index.html, main.js, render.js, style.css   — frontend local (server.mjs + /api/*)
+index.pages.html, main.pages.js,
+browser-sqlite-reader.js                     — frontend estático (GitHub Pages + sql.js), comparte render.js
+server.mjs                                   — servidor local: estáticos + /api/search, /api/entry/:id
+scripts/export-static-site.mjs               — genera dist/ para GitHub Pages
+scripts/lib/                                 — lógica de parseo/lectura, reutilizable
+scripts/*.mjs                                — CLI para regenerar los datos
+data/                                         — solo diccionario-maria-moliner.sqlite se commitea; el resto son fuentes con copyright (gitignored) o subproductos regenerables
+info/roadmap.md                              — plan detallado, decisiones de diseño, resultados de cada tarea
 ```
 
 ## Regenerar los datos

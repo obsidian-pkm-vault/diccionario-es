@@ -9,11 +9,14 @@
 <body>
     <div class="container">
         <h1>📚 Diccionario</h1>
-        <input type="text" id="searchInput" placeholder="Buscar una palabra..." autofocus>
+        <input type="text" id="searchInput" placeholder="Buscar una palabra..." autofocus disabled>
         <button onclick="searchDictionary()">Buscar</button>
+        <p id="dbStatus" class="db-status">Cargando diccionario (~12 MB, una sola vez)…</p>
         <div id="searchResults"></div>
     </div>
+    <script src="vendor/sql.js/sql-wasm.js"></script>
     <script src="render.js"></script>
+    <script src="browser-sqlite-reader.js"></script>
     <script src="main.js"></script>
 </body>
 </html>

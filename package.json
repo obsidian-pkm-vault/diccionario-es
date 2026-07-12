@@ -1,0 +1,9 @@
+{
+  "name": "diccionario-maria-moliner",
+  "private": true,
+  "type": "module",
+  "description": "Frontend-only dependency: sql.js (WASM SQLite) for the static GitHub Pages build. The Node pipeline (scripts/) uses no npm packages, only node:sqlite.",
+  "dependencies": {
+    "sql.js": "^1.14.1"
+  }
+}

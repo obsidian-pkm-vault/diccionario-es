@@ -14,6 +14,7 @@ const STATIC_FILES = {
   '/': { file: 'index.html', type: 'text/html; charset=utf-8' },
   '/index.html': { file: 'index.html', type: 'text/html; charset=utf-8' },
   '/main.js': { file: 'main.js', type: 'text/javascript; charset=utf-8' },
+  '/render.js': { file: 'render.js', type: 'text/javascript; charset=utf-8' },
   '/style.css': { file: 'style.css', type: 'text/css; charset=utf-8' },
 };
 
